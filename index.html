@@ -13,18 +13,23 @@
 <style>
 :root {
   --bg: #FAFAF7; --fg: #23262B; --muted: #6B7078;
-  --f1: #CFE3CF; --f2: #F8CFC6; --f3: #C9DAEA; --f4: #DCD3F0;
-  --r1: #4E7A52; --r2: #B9533F; --r3: #3E6489; --r4: #6E5AA8;
+  --f1: #CFE3CF; --f2: #F8CFC6; --f3: #C9DAEA; --f4: #DCD3F0; --f5: #F3E3B5; --f6: #C6E6E2;
+  --r1: #4E7A52; --r2: #B9533F; --r3: #3E6489; --r4: #6E5AA8; --r5: #8A6A12; --r6: #2F7A73;
   --font: "Nunito", "Segoe UI", system-ui, sans-serif;
+  /* Tamaño de cada círculo: cabe en 2 columnas y 3 filas en una pantalla de móvil */
+  --size: min(36vw, 150px, 16svh);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #17191C; --fg: #ECEDEF; --muted: #9CA1A8;
-    --f1: #2F4632; --f2: #4E2F29; --f3: #283B4F; --f4: #3A3354;
-    --r1: #9FCDA3; --r2: #F2A593; --r3: #9DC0E3; --r4: #C2B4EE;
+    --f1: #2F4632; --f2: #4E2F29; --f3: #283B4F; --f4: #3A3354; --f5: #4A3F22; --f6: #24413E;
+    --r1: #9FCDA3; --r2: #F2A593; --r3: #9DC0E3; --r4: #C2B4EE; --r5: #E8CF85; --r6: #92D3CB;
     color-scheme: dark;
   }
+}
+@supports not (height: 1svh) {
+  :root { --size: min(36vw, 150px, 16vh); }
 }
 
 * { box-sizing: border-box; }
@@ -34,46 +39,62 @@ body {
   background: var(--bg); color: var(--fg); font-family: var(--font);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: max(40px, env(safe-area-inset-top, 0px)) max(48px, env(safe-area-inset-bottom, 0px));
+  padding-block: max(28px, env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-bottom, 0px));
 }
 
-main { max-width: 560px; margin: 0 auto; display: grid; gap: 36px; }
+main { max-width: 520px; margin: 0 auto; display: grid; gap: clamp(20px, 3.5svh, 32px); }
 
-header { text-align: center; display: grid; gap: 6px; }
+header { text-align: center; display: grid; gap: 4px; }
 .saludo { font-size: 15px; color: var(--muted); letter-spacing: .02em; }
-h1 { margin: 0; font-weight: 800; font-size: clamp(40px, 9vw, 60px); line-height: 1; letter-spacing: -.01em; }
+h1 { margin: 0; font-weight: 800; font-size: clamp(36px, 8vw, 52px); line-height: 1; letter-spacing: -.01em; }
 
 .grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(20px, 6vw, 48px) clamp(16px, 5vw, 40px);
+  gap: clamp(14px, 2.5svh, 28px) clamp(16px, 5vw, 40px);
   list-style: none; margin: 0; padding: 0;
 }
 .grid li:nth-child(1) { --f: var(--f1); --r: var(--r1); }
 .grid li:nth-child(2) { --f: var(--f2); --r: var(--r2); }
 .grid li:nth-child(3) { --f: var(--f3); --r: var(--r3); }
 .grid li:nth-child(4) { --f: var(--f4); --r: var(--r4); }
+.grid li:nth-child(5) { --f: var(--f5); --r: var(--r5); }
+.grid li:nth-child(6) { --f: var(--f6); --r: var(--r6); }
 
-.grid a {
-  display: grid; justify-items: center; gap: 14px;
+.item {
+  display: grid; justify-items: center; gap: 10px;
   text-decoration: none; color: inherit; border-radius: 24px; outline: none;
 }
 .circle {
-  width: min(100%, 210px); aspect-ratio: 1; border-radius: 50%;
-  display: grid; place-items: center;
-  background: var(--f); font-size: clamp(52px, 15vw, 84px); line-height: 1;
+  width: var(--size); aspect-ratio: 1; border-radius: 50%;
+  display: grid; place-items: center; position: relative;
+  background: var(--f); font-size: calc(var(--size) * .42); line-height: 1;
   box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--r) 30%, transparent);
   transition: transform .3s cubic-bezier(.3,1.4,.5,1), box-shadow .3s ease;
 }
 .name {
-  font-size: clamp(16px, 4.2vw, 20px); font-weight: 800; color: var(--r);
-  text-align: center; text-wrap: balance;
+  font-size: clamp(15px, 4vw, 18px); font-weight: 800; color: var(--r);
+  text-align: center; text-wrap: balance; line-height: 1.2;
 }
-.grid a:hover .circle,
-.grid a:focus-visible .circle {
+a.item:hover .circle,
+a.item:focus-visible .circle {
   transform: scale(1.06);
   box-shadow: inset 0 0 0 3px var(--r), 0 12px 30px -10px color-mix(in srgb, var(--r) 60%, transparent);
 }
-.grid a:focus-visible .name { text-decoration: underline; text-underline-offset: 4px; }
+a.item:focus-visible .name { text-decoration: underline; text-underline-offset: 4px; }
+
+/* En construcción: sin enlace, apagado y con etiqueta */
+.pronto { cursor: default; }
+.pronto .circle {
+  opacity: .55; filter: grayscale(.4);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--r) 45%, transparent);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 10px, color-mix(in srgb, var(--r) 10%, transparent) 10px 20px);
+}
+.pronto .name { opacity: .7; }
+.badge {
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--r); border: 1.5px solid var(--r); border-radius: 999px; padding: 2px 8px;
+  margin-top: -4px;
+}
 
 footer { text-align: center; font-size: 13px; color: var(--muted); }
 
@@ -90,21 +111,30 @@ footer { text-align: center; font-size: 13px; color: var(--muted); }
     </header>
 
     <ul class="grid">
-      <li><a href="https://katwolo.github.io/si_chef/">
+      <li><a class="item" href="https://katwolo.github.io/si_chef/">
         <span class="circle" aria-hidden="true">🍲</span>
         <span class="name">Planificación de comidas</span>
       </a></li>
-      <li><a href="https://katwolo.github.io/MediHome/">
+      <li><a class="item" href="https://katwolo.github.io/MediHome/">
         <span class="circle" aria-hidden="true">💊</span>
         <span class="name">Botiquín</span>
       </a></li>
-      <li><a href="https://katwolo.github.io/garatge/">
+      <li><a class="item" href="https://katwolo.github.io/garatge/">
         <span class="circle" aria-hidden="true">🔧</span>
         <span class="name">Garaje</span>
       </a></li>
-      <li><a href="https://katwolo.github.io/registro-peso/">
+      <li><a class="item" href="https://katwolo.github.io/registro-peso/">
         <span class="circle" aria-hidden="true">⚖️</span>
         <span class="name">Registro de pesos</span>
+      </a></li>
+      <li><div class="item pronto" aria-label="Economía, en construcción">
+        <span class="circle" aria-hidden="true">💶</span>
+        <span class="name">Economía</span>
+        <span class="badge">En construcción</span>
+      </div></li>
+      <li><a class="item" href="https://katwolo.github.io/diario/#/crear">
+        <span class="circle" aria-hidden="true">📝</span>
+        <span class="name">Notas</span>
       </a></li>
     </ul>
 
