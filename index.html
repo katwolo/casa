@@ -82,20 +82,6 @@ a.item:focus-visible .circle {
 }
 a.item:focus-visible .name { text-decoration: underline; text-underline-offset: 4px; }
 
-/* En construcción: sin enlace, apagado y con etiqueta */
-.pronto { cursor: default; }
-.pronto .circle {
-  opacity: .55; filter: grayscale(.4);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--r) 45%, transparent);
-  background-image: repeating-linear-gradient(-45deg, transparent 0 10px, color-mix(in srgb, var(--r) 10%, transparent) 10px 20px);
-}
-.pronto .name { opacity: .7; }
-.badge {
-  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--r); border: 1.5px solid var(--r); border-radius: 999px; padding: 2px 8px;
-  margin-top: -4px;
-}
-
 footer { text-align: center; font-size: 13px; color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -127,11 +113,10 @@ footer { text-align: center; font-size: 13px; color: var(--muted); }
         <span class="circle" aria-hidden="true">⚖️</span>
         <span class="name">Registro de pesos</span>
       </a></li>
-      <li><div class="item pronto" aria-label="Economía, en construcción">
+      <li><a class="item" href="https://katwolo.github.io/economia/">
         <span class="circle" aria-hidden="true">💶</span>
         <span class="name">Economía</span>
-        <span class="badge">En construcción</span>
-      </div></li>
+      </a></li>
       <li><a class="item" href="https://katwolo.github.io/diario/#/crear">
         <span class="circle" aria-hidden="true">📝</span>
         <span class="name">Notes</span>
