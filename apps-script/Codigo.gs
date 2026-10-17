@@ -11,7 +11,7 @@
 //   { ok: true, ... }  o  { ok: false, error, codigo }
 // =====================================================================
 
-const VERSION = '7';
+const VERSION = '8';
 
 // Secciones de casa, en el orden de la portada.
 const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', 'notes'];
@@ -27,6 +27,7 @@ function seccionesMigradas_() {
     pesos: SECCION_PESOS,
     garaje: SECCION_GARAJE,
     economia: SECCION_ECONOMIA,
+    notes: SECCION_NOTES,
   };
 }
 
@@ -79,7 +80,7 @@ function atender_(usuario, req) {
 // autorizar el acceso a tus hojas y al correo. Después, publica una versión nueva.
 function autorizar() {
   const props = PropertiesService.getScriptProperties();
-  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID', 'PESOS_SPREADSHEET_ID', 'GARAJE_SS_ID', 'ECONOMIA_SPREADSHEET_ID'].forEach(function (p) {
+  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID', 'PESOS_SPREADSHEET_ID', 'GARAJE_SS_ID', 'ECONOMIA_SPREADSHEET_ID', 'NOTES_SPREADSHEET_ID'].forEach(function (p) {
     const id = props.getProperty(p);
     if (!id) {
       console.log(p + ': falta la propiedad');
@@ -91,7 +92,7 @@ function autorizar() {
       console.log(p + ': no se puede abrir (' + e.message + ')');
     }
   });
-  ['GARAJE_ROOT_ID', 'ECONOMIA_FOLDER_ID'].forEach(function (p) {
+  ['GARAJE_ROOT_ID', 'ECONOMIA_FOLDER_ID', 'NOTES_FOLDER_ID'].forEach(function (p) {
     const carpeta = props.getProperty(p);
     if (!carpeta) {
       console.log(p + ': falta la propiedad');

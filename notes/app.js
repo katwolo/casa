@@ -1,5 +1,5 @@
 import { db } from './db.js';
-import { api, getConfig, setConfig, isConfigured, getTombstones, addTombstone, clearTombstones, resetTombstones } from './sync.js';
+import { api, getConfig, setConfig, isConfigured, permiso, getTombstones, addTombstone, clearTombstones, resetTombstones } from './sync.js';
 import { recognize } from './ocr.js';
 import { openCamera, closeCamera, cameraSupported } from './camera.js';
 
@@ -280,8 +280,9 @@ async function syncNow({ manual = false } = {}) {
   try {
     await flush();
 
+    const soloVer = permiso() === 'ver';
     // 1. Fotos y grabaciones nuevas → carpeta de Drive
-    for (const it of items) {
+    for (const it of soloVer ? [] : items) {
       if (!it.hasMedia || it.driveId) continue;
       const blob = await db.get('blobs', it.id);
       if (!blob) continue;
@@ -295,9 +296,9 @@ async function syncNow({ manual = false } = {}) {
     await flush();
 
     // 2. Cambios de texto → hoja de cálculo
-    const sentNbs = notebooks.filter((n) => n.dirty).map(stripLocal);
-    const sentItems = items.filter((i) => i.dirty).map(stripLocal);
-    const tombs = getTombstones();
+    const sentNbs = soloVer ? [] : notebooks.filter((n) => n.dirty).map(stripLocal);
+    const sentItems = soloVer ? [] : items.filter((i) => i.dirty).map(stripLocal);
+    const tombs = soloVer ? [] : getTombstones();
     const res = await api('sync', {
       notebooks: [...sentNbs, ...tombs.filter((t) => t.kind === 'notebooks')],
       items: [...sentItems, ...tombs.filter((t) => t.kind === 'items')],
@@ -541,19 +542,13 @@ function renderMore() {
     <div class="page-head"><h1>Más</h1></div>
 
     <div class="section-head"><h2>Google Sheets y Drive</h2></div>
-    <p class="prose">El texto se guarda en tu hoja de cálculo y las fotos y grabaciones en tu carpeta de Drive. Escribe tu clave (la propiedad TOKEN del script) para conectar este dispositivo.</p>
-    <form id="sync-form" class="settings" autocomplete="off">
-      <label class="field">URL de la aplicación web
-        <input name="url" type="url" required placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url || '')}">
-      </label>
-      <label class="field">Clave (la misma que TOKEN en Codigo.gs)
-        <input name="token" type="password" required value="${esc(cfg.token || '')}">
-      </label>
-      <div class="btn-row">
-        <button class="btn primary">${icon('cloud')} Guardar y sincronizar</button>
-        ${isConfigured() ? '<button type="button" class="btn danger" data-action="sync-off">Desconectar</button>' : ''}
-      </div>
-    </form>
+    <p class="prose">El texto se guarda en tu hoja de cálculo y las fotos y grabaciones en tu carpeta de Drive. ${isConfigured()
+      ? 'Conectado a Casa' + (permiso() === 'ver' ? ': solo puedes ver, los cambios no se guardan en Google.' : '.')
+      : 'Este dispositivo no está conectado a Casa.'} La conexión y la clave se gestionan desde Casa.</p>
+    <div class="btn-row">
+      ${isConfigured() ? '<button type="button" class="btn" data-action="sync-now">Sincronizar ahora</button>' : ''}
+      <a class="btn primary" href="../ajustes/">Ajustes de Casa</a>
+    </div>
     <p class="prose" id="sync-status"></p>
 
     <div class="section-head"><h2>Copia de seguridad</h2></div>
@@ -568,20 +563,6 @@ function renderMore() {
   `;
   updateSyncStatus();
   $('#import').addEventListener('change', (e) => e.target.files[0] && importData(e.target.files[0]));
-  $('#sync-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const url = e.target.url.value.trim();
-    const token = e.target.token.value.trim();
-    if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return toast('La URL debe ser la de tu script de Google (…/exec)');
-    setConfig({ url, token, lastError: '' });
-    // Primera vez: hay que subir todo lo que ya existe.
-    if (!cfg.token) {
-      items.forEach((i) => (i.dirty = true));
-      notebooks.forEach((n) => (n.dirty = true));
-    }
-    await syncNow({ manual: true });
-    if (location.hash === '#/mas') renderMore();
-  });
 }
 
 function renderEditor(id) {
@@ -882,10 +863,8 @@ async function runAction(action, id) {
       location.hash = '#/libretas';
       break;
     }
-    case 'sync-off':
-      if (!confirm('¿Dejar de sincronizar este dispositivo? Tus datos en Google no se borran.')) return;
-      setConfig({ token: '', lastSync: 0, lastError: '' });
-      renderMore();
+    case 'sync-now':
+      syncNow({ manual: true });
       break;
     case 'export':
       exportData();

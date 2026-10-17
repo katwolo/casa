@@ -16,7 +16,7 @@
     { id: 'garaje', nombre: 'Garaje', emoji: '🔧', href: RAIZ + 'garaje/' },
     { id: 'pesos', nombre: 'Registro de pesos', emoji: '⚖️', href: RAIZ + 'pesos/' },
     { id: 'economia', nombre: 'Economía', emoji: '💶', href: RAIZ + 'economia/' },
-    { id: 'notes', nombre: 'Notes', emoji: '📝', href: 'https://katwolo.github.io/diario/#/crear' },
+    { id: 'notes', nombre: 'Notes', emoji: '📝', href: RAIZ + 'notes/#/crear' },
   ];
   const IDS = SECCIONES.map(function (s) { return s.id; });
 

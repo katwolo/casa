@@ -1,6 +1,6 @@
 # Script Casa
 
-Un único proyecto de Apps Script para todas las secciones de Casa. Controla quién entra (tú o tu pareja) y qué puede hacer cada uno en cada sección. Las secciones se irán migrando a este script una a una; mientras tanto, cada web sigue usando su script de siempre.
+Un único proyecto de Apps Script para todas las secciones de Casa. Controla quién entra (tú o tu pareja) y qué puede hacer cada uno en cada sección. Las seis secciones (Comidas, Botiquín, Garaje, Pesos, Economía y Notes) ya están migradas.
 
 ## Archivos
 
@@ -13,6 +13,7 @@ Un único proyecto de Apps Script para todas las secciones de Casa. Controla qui
 | `pesos.gs` | Sección Pesos: perfiles y registros de peso. |
 | `garaje.gs` | Sección Garaje: vehículos, registros y facturas en Drive (con lectura OCR). |
 | `economia.gs` | Sección Economía: movimientos, gastos fijos, presupuestos, objetivos y tickets en Drive. |
+| `notes.gs` | Sección Notes: notas, tareas, eventos, libretas, y fotos y grabaciones en Drive. |
 | `appsscript.json` | Configuración del proyecto (zona horaria y publicación como app web). |
 
 ## Instalación (una sola vez)
@@ -44,6 +45,8 @@ Si quieres no tener que pegar la URL en cada dispositivo, ponla también en `com
 | `GARAJE_ROOT_ID` | Tú, a mano | ID de la carpeta de Drive «Garatge · Vehicles» (`ROOT_ID` en el script original de garatge). |
 | `ECONOMIA_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de economía. |
 | `ECONOMIA_FOLDER_ID` | Tú, a mano | ID de la carpeta de tickets «Economía familiar - tickets» (`FOLDER_ID` en el script original). |
+| `NOTES_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de Notes (la del repositorio diario). |
+| `NOTES_FOLDER_ID` | Tú, a mano | ID de la carpeta de fotos y grabaciones de Notes (`FOLDER_ID` en el código original: `1MSY4B9YGGNCExrQkpKkp7rWHCIaRtD_y`). |
 | `CLAVE_PAREJA` | Ajustes | Clave de tu pareja. Se crea, cambia o quita desde Ajustes. |
 | `PERMISOS_PAREJA` | Ajustes | Ninguno / ver / editar en cada sección. |
 | `AVISO_EMAIL` | Ajustes | `si` para recibir un correo si alguien usa una clave incorrecta (como mucho uno por hora). |
@@ -62,6 +65,7 @@ Pega los archivos nuevos y haz **Implementar → Gestionar implementaciones → 
 | Pesos | `pesos.gs` | `PESOS_SPREADSHEET_ID` | Usa la misma hoja que la web original registro-peso. Las fechas se leen y escriben en la zona horaria de la propia hoja, para que no cambien de día. |
 | Garaje | `garaje.gs` | `GARAJE_SS_ID` y `GARAJE_ROOT_ID` | Usa la misma hoja y la misma carpeta de facturas que la web original garatge. A diferencia del original, no crea nada si faltan los IDs: muestra un error. Necesita los permisos de Drive y de conexiones externas (para leer facturas). |
 | Economía | `economia.gs` | `ECONOMIA_SPREADSHEET_ID` y `ECONOMIA_FOLDER_ID` | Usa la misma hoja y la misma carpeta de tickets que la web original. No crea nada si faltan los IDs. Con permiso de solo ver, la sincronización devuelve los datos pero ignora lo que envía el móvil. **El script original debe seguir dentro de la hoja**: su función `onEdit` marca las filas que editas a mano para que lleguen a la app, y eso solo funciona desde un script que vive en la hoja. |
+| Notes | `notes.gs` | `NOTES_SPREADSHEET_ID` y `NOTES_FOLDER_ID` | Igual que Economía: misma hoja y misma carpeta, con solo ver se ignora lo que envía el móvil, y **el script original debe seguir dentro de la hoja** por su función `onEdit`. |
 
 Para añadir una sección: crea su archivo `.gs` en el proyecto, añade su propiedad con el ID de la hoja y publica una **nueva versión**. La primera vez que una sección use un servicio nuevo de Google (Sheets, Drive…), el editor te pedirá autorizarlo.
 
