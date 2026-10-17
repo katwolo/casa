@@ -43,7 +43,6 @@
         Casa.SECCIONES.forEach(function (s) { grupos[c.permisos[s.id] || 'ninguno'].push(s.nombre); });
         if (grupos.editar.length) texto += ' Puedes editar: ' + grupos.editar.join(', ') + '.';
         if (grupos.ver.length) texto += ' Solo ver: ' + grupos.ver.join(', ') + '.';
-        if (grupos.ninguno.length) texto += ' Sin acceso: ' + grupos.ninguno.join(', ') + '.';
       }
       mostrarEstado($('estado-conexion'), 'ok', texto);
     } else {
@@ -52,6 +51,9 @@
     const esAdmin = c.rol === 'admin';
     $('sec-pareja').hidden = !esAdmin;
     $('sec-seguridad').hidden = !esAdmin;
+    // Lo que se lista depende de los permisos de quien está conectado.
+    pintarPortada();
+    pintarEnlaces();
   }
 
   $('f-conexion').addEventListener('submit', function (e) {
@@ -82,7 +84,9 @@
     $('i-nombre').value = p.nombre;
     const ul = $('lista-portada');
     ul.textContent = '';
-    p.orden.forEach(function (id, i) {
+    // Las secciones sin acceso no aparecen, como si no existieran.
+    const lista = p.orden.filter(Casa.tieneAcceso);
+    lista.forEach(function (id, i) {
       const s = seccion(id);
       const li = filaSeccion(s);
 
@@ -107,10 +111,14 @@
         b.textContent = m[0];
         b.setAttribute('aria-label', m[2] + ' ' + s.nombre);
         const destino = i + m[1];
-        b.disabled = destino < 0 || destino >= p.orden.length;
+        b.disabled = destino < 0 || destino >= lista.length;
         b.addEventListener('click', function () {
+          // Intercambia con la sección visible de al lado; las ocultas no se mueven.
           const orden = Casa.preferencias().orden;
-          orden.splice(destino, 0, orden.splice(i, 1)[0]);
+          const a = orden.indexOf(lista[i]);
+          const c = orden.indexOf(lista[destino]);
+          orden[a] = lista[destino];
+          orden[c] = lista[i];
           Casa.guardarPreferencias({ orden: orden });
           pintarPortada();
           const foco = ul.children[destino] && ul.children[destino].querySelector('[aria-label^="' + m[2] + '"]');
@@ -293,23 +301,25 @@
   });
 
   // ---------- Enlaces a las secciones ----------
-  Casa.SECCIONES.forEach(function (s) {
-    const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.href = s.href;
-    const fila = filaSeccion(s);
-    const flecha = document.createElement('span');
-    flecha.className = 'flecha';
-    flecha.textContent = 'Abrir →';
-    fila.appendChild(flecha);
-    a.appendChild(fila);
-    li.appendChild(a);
-    $('lista-enlaces').appendChild(li);
-  });
+  function pintarEnlaces() {
+    $('lista-enlaces').textContent = '';
+    Casa.SECCIONES.filter(function (s) { return Casa.tieneAcceso(s.id); }).forEach(function (s) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = s.href;
+      const fila = filaSeccion(s);
+      const flecha = document.createElement('span');
+      flecha.className = 'flecha';
+      flecha.textContent = 'Abrir →';
+      fila.appendChild(flecha);
+      a.appendChild(fila);
+      li.appendChild(a);
+      $('lista-enlaces').appendChild(li);
+    });
+  }
 
   // ---------- Inicio ----------
   pintarConexion();
-  pintarPortada();
   const c = Casa.conexion();
   if (c.clave && c.url) {
     // Refresca rol y permisos por si han cambiado desde otro dispositivo.

@@ -13,19 +13,32 @@
 <link rel="stylesheet" href="comun/estilo.css">
 <script src="comun/casa.js"></script>
 <style>
-:root {
-  /* Tamaño de cada círculo: cabe en 2 columnas y 3 filas en una pantalla de móvil */
-  --size: min(36vw, 150px, 16svh);
-}
+/* Tamaño de cada círculo según cuántas secciones hay: cuantas menos, más grandes,
+   siempre sin hacer scroll en un móvil. Con número impar, la última va centrada. */
+.grid { --size: min(36vw, 150px, 16svh); }
+.grid[data-n="1"] { --size: min(62vw, 240px, 36svh); grid-template-columns: minmax(0, 1fr); }
+.grid[data-n="2"] { --size: min(40vw, 200px, 30svh); }
+.grid[data-n="3"], .grid[data-n="4"] { --size: min(38vw, 180px, 24svh); }
 @supports not (height: 1svh) {
-  :root { --size: min(36vw, 150px, 16vh); }
+  .grid { --size: min(36vw, 150px, 16vh); }
+  .grid[data-n="1"] { --size: min(62vw, 240px, 36vh); }
+  .grid[data-n="2"] { --size: min(40vw, 200px, 30vh); }
+  .grid[data-n="3"], .grid[data-n="4"] { --size: min(38vw, 180px, 24vh); }
 }
+.grid { align-content: center; }
+.grid li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.grid:not([data-n="5"]):not([data-n="6"]) .name { font-size: clamp(16px, 4.6vw, 21px); }
 
 body {
   padding-block: max(28px, env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-bottom, 0px));
 }
 
-main { max-width: 520px; margin: 0 auto; display: grid; gap: clamp(20px, 3.5svh, 32px); position: relative; }
+main {
+  max-width: 520px; margin: 0 auto; display: grid; gap: clamp(20px, 3.5svh, 32px); position: relative;
+  /* Las secciones ocupan el centro de la pantalla, entre el título y la fecha */
+  min-height: calc(100svh - 2 * max(28px, env(safe-area-inset-top, 0px)));
+  grid-template-rows: auto 1fr auto;
+}
 
 header { text-align: center; display: grid; gap: 4px; }
 .saludo { font-size: 15px; color: var(--muted); letter-spacing: .02em; }
@@ -68,21 +81,13 @@ a.item:focus-visible .circle {
 }
 a.item:focus-visible .name { text-decoration: underline; text-underline-offset: 4px; }
 
-/* Sin permiso: apagado y con candado */
-.bloqueado { cursor: default; }
-.bloqueado .circle { opacity: .45; filter: grayscale(.7); }
-.bloqueado .name { opacity: .6; }
-.candado {
-  position: absolute; right: 4%; bottom: 4%;
-  display: grid; place-items: center; width: 32%; aspect-ratio: 1; border-radius: 50%;
-  background: var(--card); border: 2px solid var(--line); font-size: 45%;
-}
 .solo-ver {
   font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   color: var(--r); border: 1.5px solid var(--r); border-radius: 999px; padding: 2px 8px; margin-top: -4px;
 }
 
 footer { text-align: center; font-size: 13px; color: var(--muted); }
+.sin-secciones { align-self: center; text-align: center; color: var(--muted); font-size: 16px; line-height: 1.5; margin: 24px auto; max-width: 30ch; }
 </style>
 </head>
 <body>
@@ -94,6 +99,7 @@ footer { text-align: center; font-size: 13px; color: var(--muted); }
     </header>
 
     <ul class="grid" id="grid"></ul>
+    <p class="sin-secciones" id="sin-secciones" hidden>Todavía no tienes acceso a ninguna sección. Cuando te lo den, aparecerán aquí.</p>
 
     <footer id="fecha"></footer>
   </main>
@@ -108,29 +114,26 @@ footer { text-align: center; font-size: 13px; color: var(--muted); }
   document.getElementById('fecha').textContent = f.charAt(0).toUpperCase() + f.slice(1);
 
   const grid = document.getElementById('grid');
-  prefs.orden.forEach(function (id) {
-    if (prefs.ocultas.indexOf(id) >= 0) return;
+  // Solo las secciones con acceso y que no se han ocultado en Ajustes.
+  const visibles = prefs.orden.filter(function (id) {
+    return prefs.ocultas.indexOf(id) < 0 && Casa.tieneAcceso(id);
+  });
+  grid.dataset.n = visibles.length;
+  grid.hidden = visibles.length === 0;
+  document.getElementById('sin-secciones').hidden = visibles.length > 0;
+  visibles.forEach(function (id) {
     const s = Casa.SECCIONES.find(function (x) { return x.id === id; });
-    const permiso = Casa.permiso(id); // null si este dispositivo no está conectado
     const li = document.createElement('li');
     li.className = 's-' + s.id;
-    let el;
-    if (permiso === 'ninguno') {
-      el = document.createElement('div');
-      el.className = 'item bloqueado';
-      el.setAttribute('aria-label', s.nombre + ', sin acceso');
-      el.innerHTML = '<span class="circle" aria-hidden="true">' + s.emoji + '<span class="candado">🔒</span></span>';
-    } else {
-      el = document.createElement('a');
-      el.className = 'item';
-      el.href = s.href;
-      el.innerHTML = '<span class="circle" aria-hidden="true">' + s.emoji + '</span>';
-    }
+    const el = document.createElement('a');
+    el.className = 'item';
+    el.href = s.href;
+    el.innerHTML = '<span class="circle" aria-hidden="true">' + s.emoji + '</span>';
     const nombre = document.createElement('span');
     nombre.className = 'name';
     nombre.textContent = s.nombre;
     el.appendChild(nombre);
-    if (permiso === 'ver') {
+    if (Casa.permiso(id) === 'ver') {
       const b = document.createElement('span');
       b.className = 'solo-ver';
       b.textContent = 'Solo ver';

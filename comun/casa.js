@@ -89,6 +89,11 @@
     return c.permisos[id] || 'ninguno';
   }
 
+  // Si este dispositivo puede ver la sección. Sin conexión se muestran todas.
+  function tieneAcceso(id) {
+    return permiso(id) !== 'ninguno';
+  }
+
   // ---------- Preferencias de este dispositivo ----------
   function preferencias() {
     const p = Object.assign({ tema: 'auto', nombre: '', orden: [], ocultas: [] }, leer(K_PREFS));
@@ -118,6 +123,7 @@
     llamar: llamar,
     comprobar: comprobar,
     permiso: permiso,
+    tieneAcceso: tieneAcceso,
     preferencias: preferencias,
     guardarPreferencias: guardarPreferencias,
     aplicarTema: aplicarTema,
