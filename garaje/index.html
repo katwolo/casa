@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Garatge · Els meus vehicles</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+<style>
+:root{
+  --bg:#f3f4f7; --card:#fff; --tx:#151821; --mut:#6b7280; --ln:#e5e7eb;
+  --pri:#1f6feb; --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
+  --r:14px; --sh:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1115;--card:#181b22;--tx:#e8eaf0;--mut:#9aa1ad;--ln:#2a2e38;--sh:none}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+a{color:var(--pri)}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--ln)}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.3px}
+.top-act a{font-size:20px;text-decoration:none;margin-left:12px}
+main{max-width:720px;margin:0 auto;padding:12px 16px}
+.view{display:none}.view.active{display:block}
+h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:18px 2px 8px}
+
+/* Avisos */
+.avis{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;background:var(--card);border-radius:var(--r);
+  padding:11px 14px;margin-bottom:8px;box-shadow:var(--sh);border-left:4px solid var(--mut);cursor:pointer}
+.avis span{margin-left:auto;font-size:13px;color:var(--mut)}
+.avis.ok{border-color:var(--ok);cursor:default}.avis.warn{border-color:var(--warn)}.avis.bad{border-color:var(--bad)}
+.avis.bad span{color:var(--bad);font-weight:600}.avis.warn span{color:var(--warn);font-weight:600}
+
+/* Vehicles */
+.vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px;margin-bottom:10px;
+  border-top:5px solid var(--vc,#1f6feb);cursor:pointer}
+.vhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.vnom{font-weight:700;font-size:17px}
+.plate{display:inline-block;margin-top:4px;font:600 13px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;
+  border:1.5px solid var(--tx);border-left:8px solid #1d4ed8;border-radius:4px;padding:4px 7px}
+.vkm{font-weight:700;color:var(--mut);white-space:nowrap}
+.vrow{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.badge{font-size:12px;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok);font-weight:600}
+.badge.warn{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.badge.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.badge.muted{background:var(--bg);color:var(--mut)}
+.vfoot{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--mut);border-top:1px solid var(--ln);padding-top:9px}
+.vfoot span{white-space:nowrap}
+.stat{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px;display:flex;justify-content:space-between;align-items:center}
+.stat b{font-size:20px}
+.vitem{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px;margin-bottom:8px;border-left:5px solid var(--vc)}
+.vitem .info{flex:1;min-width:0}.vitem small{color:var(--mut)}
+
+/* Historial */
+.search input{width:100%;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--ln);background:var(--card);color:var(--tx)}
+.filters{display:flex;gap:6px;margin:8px 0;overflow-x:auto}
+.filters select{flex:1;min-width:0;font-size:14px;padding:8px;border-radius:10px;border:1px solid var(--ln);background:var(--card);color:var(--tx)}
+.resum{font-size:13px;color:var(--mut);margin:4px 2px 8px}
+.mes{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:14px 2px 6px}
+.reg{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:12px;padding:11px 12px;margin-bottom:6px;box-shadow:var(--sh);cursor:pointer}
+.ric{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:19px;flex:none}
+.rbody{flex:1;min-width:0}
+.rtit{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rmeta{font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rright{text-align:right;flex:none}.rcost{font-weight:700}.clip{font-size:12px;color:var(--mut)}
+
+.empty{text-align:center;padding:40px 16px;color:var(--mut)}.empty .big{font-size:56px}
+.empty h2{color:var(--tx);margin:8px 0}.empty.small{padding:28px 10px}
+
+/* Botons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:12px 16px;
+  font:600 15px system-ui,sans-serif;background:var(--pri);color:#fff;cursor:pointer}
+.btn.ghost{background:var(--bg);color:var(--tx);border:1px solid var(--ln)}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}
+.btn.wide{width:100%;margin-top:10px}
+.btn.sm{padding:7px 12px;font-size:13px}
+.fab{position:fixed;right:18px;bottom:calc(78px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;
+  border:0;background:var(--pri);color:#fff;font-size:30px;box-shadow:0 6px 18px rgba(31,111,235,.45);z-index:6;cursor:pointer}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--ln);
+  padding-bottom:env(safe-area-inset-bottom);z-index:6}
+.tabs button{flex:1;border:0;background:none;color:var(--mut);padding:9px 0 10px;font:600 11.5px system-ui,sans-serif;cursor:pointer}
+.tabs button i{display:block;font-style:normal;font-size:21px;margin-bottom:1px;filter:grayscale(1);opacity:.7}
+.tabs button.active{color:var(--pri)}.tabs button.active i{filter:none;opacity:1}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.modal.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;
+  padding:16px 16px calc(20px + env(safe-area-inset-bottom));animation:up .2s ease}
+@media(min-width:700px){.modal{align-items:center}.sheet{border-radius:20px}}
+@keyframes up{from{transform:translateY(40px);opacity:.5}}
+.mh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.mh h2{margin:0;font-size:19px}
+.x{border:0;background:var(--bg);color:var(--tx);width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex:none}
+form label{display:block;font-size:13px;font-weight:600;color:var(--mut);margin-top:10px}
+form input,form select,form textarea{display:block;width:100%;margin-top:4px;font:16px system-ui,sans-serif;padding:10px 12px;
+  border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--tx)}
+form input[type=color]{padding:3px;height:44px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g2 .btn{margin-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{border:1px solid var(--ln);background:var(--bg);color:var(--tx);border-radius:99px;padding:7px 11px;font:500 13.5px system-ui,sans-serif;cursor:pointer}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+fieldset.prox{border:1px dashed var(--ln);border-radius:12px;margin:14px 0 0;padding:4px 12px 12px}
+fieldset.prox legend{font-size:13px;font-weight:700;color:var(--mut);padding:0 6px}
+.fact{margin-top:14px;padding:12px;border-radius:12px;background:var(--bg)}
+.fact-t{font-weight:700;font-size:14px;margin-bottom:8px}
+.fact-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fact-btns label{margin:0;color:var(--tx)}
+.hint{font-size:12px;color:var(--mut);margin-top:8px}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.th{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--card);border:1px solid var(--ln);
+  display:flex;align-items:center;justify-content:center;font-size:26px;text-align:center}
+.th a{text-decoration:none;color:var(--tx);display:flex;flex-direction:column;align-items:center;padding:4px}
+.th small{font-size:9px;word-break:break-all;line-height:1.1;max-height:30px;overflow:hidden;display:block;color:var(--mut)}
+.th img{width:100%;height:100%;object-fit:cover}
+.th button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:11px;cursor:pointer}
+.th.nou{outline:2px solid var(--pri)}
+.det{margin:6px 0 12px}
+.drow{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--ln);font-size:14.5px}
+.drow span:first-child{color:var(--mut)}.drow span:last-child{text-align:right;white-space:pre-wrap}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:6px}
+.gimg{display:flex;align-items:center;justify-content:center;min-height:130px;border-radius:12px;background:var(--bg);overflow:hidden;
+  text-decoration:none;color:var(--mut);font-size:13px;border:1px solid var(--ln)}
+.gimg img{width:100%;height:100%;object-fit:cover;max-height:220px}
+
+#toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;
+  background:#111827;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;transition:.25s;z-index:40;pointer-events:none;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%)}#toast.err{background:var(--bad)}
+.loader{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;flex-direction:column;gap:12px;align-items:center;justify-content:center;
+  z-index:50;color:#fff;font-weight:600}
+.loader.on{display:flex}
+.spin{width:42px;height:42px;border-radius:50%;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+[hidden]{display:none!important}
+.ocr{margin-top:8px;font-size:13px;color:var(--mut)}.ocr pre{white-space:pre-wrap;max-height:220px;overflow:auto;background:var(--bg);padding:8px;border-radius:8px}
+input.auto,select.auto,textarea.auto{background:color-mix(in srgb,#facc15 22%,var(--card));border-color:#eab308}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">🚗 Garatge</div>
+  <div class="top-act">
+    <a id="lnkDrive" target="_blank" title="Carpeta de factures a Drive">📁</a>
+    <a id="lnkSS" target="_blank" title="Full de càlcul">📊</a>
+    <a href="#" onclick="obrirConfig();return false" title="Configuració">⚙️</a>
+  </div>
+</header>
+
+<main>
+  <section id="v-inici" class="view active"></section>
+
+  <section id="v-historial" class="view">
+    <div class="search"><input id="q" type="search" placeholder="Cerca: oli, frens, taller, matrícula…" autocomplete="off"></div>
+    <div class="filters">
+      <select id="fVeh"></select><select id="fTipus"></select><select id="fAny"></select>
+    </div>
+    <div id="resum" class="resum"></div>
+    <div id="llista"></div>
+  </section>
+
+  <section id="v-vehicles" class="view">
+    <h3 class="sec">Els meus vehicles</h3>
+    <div id="llistaVeh"></div>
+    <button class="btn wide" onclick="obrirVehicle()">+ Afegir vehicle</button>
+  </section>
+</main>
+
+<button class="fab" onclick="obrirRegistre()" aria-label="Nou registre">＋</button>
+
+<nav class="tabs">
+  <button data-v="inici" class="active" onclick="canviVista('inici')"><i>🏠</i>Inici</button>
+  <button data-v="historial" onclick="canviVista('historial')"><i>🔎</i>Historial</button>
+  <button data-v="vehicles" onclick="canviVista('vehicles')"><i>🚙</i>Vehicles</button>
+</nav>
+
+<div id="modal" class="modal"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+<div id="loader" class="loader"><div class="spin"></div><span id="loaderTxt">Carregant…</span></div>
+
+<script>
+/* Garatge · Seguiment de vehicles — Iván */
+const TIPUS = {
+  'Manteniment': { ic: '🛠️', c: '#2563eb' },
+  'Reparació':   { ic: '🔧', c: '#dc2626' },
+  'ITV':         { ic: '✅', c: '#16a34a' },
+  'Pneumàtics':  { ic: '🛞', c: '#7c3aed' },
+  'Assegurança': { ic: '🛡️', c: '#0891b2' },
+  'Impostos':    { ic: '🧾', c: '#ca8a04' },
+  'Recanvis':    { ic: '⚙️', c: '#64748b' },
+  'Altres':      { ic: '📌', c: '#475569' }
+};
+const MESOS = ['gener','febrer','març','abril','maig','juny','juliol','agost','setembre','octubre','novembre','desembre'];
+
+let S = { vehicles: [], registres: [], links: {} };
+let nousFitxers = [];
+let fitxersActuals = [];
+const thumbCache = new Map();
+
+/* ───── Connexió amb Apps Script ───── */
+// URL de la implementació de l'aplicació web (acaba en /exec). Es pot deixar aquí fixa
+// o configurar-la des de ⚙️ (es desa al navegador).
+const GAS_URL_PER_DEFECTE = 'https://script.google.com/macros/s/AKfycbznt2QDfCrVCKj40kfhuXplaEuX62z44XTVub1C5WeoW4HwgVV4BVw__iA5OdIYI8vL/exec';
+const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sense emmagatzematge */ } };
+// La URL és sempre la del codi; s'esborra qualsevol URL antiga desada al navegador
+try { localStorage.removeItem('garatge.url'); } catch (e) { /* sense emmagatzematge */ }
+const cfg = () => ({ url: GAS_URL_PER_DEFECTE, clau: lsGet('garatge.clau') });
+
+async function gasRun(fn, ...args) {
+  const { url, clau } = cfg();
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita el preflight CORS
+      body: JSON.stringify({ clau, fn, args })
+    });
+  } catch (e) { throw new Error('No s\'ha pogut connectar amb l\'Apps Script'); }
+  let out;
+  try { out = await res.json(); } catch (e) { throw new Error('L\'Apps Script no respon bé: revisa que estigui autoritzat (funció autoritzar) i implementat amb accés "Qualsevol persona"'); }
+  if (!out.ok) {
+    if (out.codi === 'CLAU') obrirConfig();
+    throw new Error(out.error || 'Error desconegut');
+  }
+  return out.data;
+}
+
+/* ───── Utilitats ───── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const buit = n => n === '' || n === null || n === undefined;
+const eur = n => buit(n) ? '' : Number(n).toLocaleString('ca-ES', { style: 'currency', currency: 'EUR' });
+const kmf = n => buit(n) ? '' : Number(n).toLocaleString('ca-ES') + ' km';
+const dataf = d => d ? String(d).split('-').reverse().join('/') : '';
+const avui = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const dies = d => Math.round((new Date(d + 'T00:00') - new Date(avui() + 'T00:00')) / 864e5);
+const vehById = id => S.vehicles.find(v => v.id === id);
+const nomVeh = v => v ? (v.nom || v.matricula || 'Vehicle') : '?';
+const errMsg = e => (e && e.message) ? e.message : String(e);
+
+function loader(on, txt) { $('#loaderTxt').textContent = txt || 'Carregant…'; $('#loader').classList.toggle('on', on); }
+let tT;
+function toast(msg, err) {
+  const t = $('#toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : '');
+  clearTimeout(tT); tT = setTimeout(() => t.className = '', err ? 4000 : 2200);
+}
+
+/* ───── Càrrega ───── */
+async function carregar() {
+  loader(true);
+  try { aplicar(await gasRun('getData')); }
+  catch (e) { toast(errMsg(e), true); }
+  finally { loader(false); }
+}
+function aplicar(d) {
+  S = d;
+  $('#lnkDrive').href = d.links.carpeta;
+  $('#lnkSS').href = d.links.ss;
+  renderInici(); omplirFiltres(); renderHistorial(); renderVehicles();
+}
+function canviVista(v) {
+  document.querySelectorAll('.view').forEach(e => e.classList.toggle('active', e.id === 'v-' + v));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  window.scrollTo(0, 0);
+}
+
+/* ───── Avisos ───── */
+function avisos() {
+  const out = [];
+  S.vehicles.forEach(v => {
+    if (v.itv) out.push({ v, ic: '✅', txt: 'ITV', d: dies(v.itv), data: v.itv });
+    if (v.asseguranca) out.push({ v, ic: '🛡️', txt: 'Assegurança', d: dies(v.asseguranca), data: v.asseguranca });
+  });
+  // Només compta el registre més recent de cada "feina" (mateix vehicle + mateix títol)
+  const vist = new Set();
+  S.registres.forEach(r => {
+    if (r.tipus === 'ITV' || r.tipus === 'Assegurança') return;
+    const key = r.vehicle + '|' + norm(r.titol);
+    if (vist.has(key)) return;
+    vist.add(key);
+    const v = vehById(r.vehicle); if (!v) return;
+    const a = { v, ic: (TIPUS[r.tipus] || TIPUS.Altres).ic, txt: r.titol, r };
+    if (r.properaData) { a.d = dies(r.properaData); a.data = r.properaData; }
+    if (!buit(r.propersKm) && !buit(v.km)) a.kmRest = Number(r.propersKm) - Number(v.km);
+    if (a.d !== undefined || a.kmRest !== undefined) out.push(a);
+  });
+  const urg = a => Math.min(a.d ?? 9999, a.kmRest !== undefined ? a.kmRest / 30 : 9999);
+  return out.filter(a => (a.d !== undefined && a.d <= 60) || (a.kmRest !== undefined && a.kmRest <= 1500))
+            .sort((a, b) => urg(a) - urg(b));
+}
+function textAvis(a) {
+  const p = [];
+  if (a.d !== undefined) p.push(a.d < 0 ? `vençut fa ${-a.d} dies` : a.d === 0 ? 'avui!' : `en ${a.d} dies · ${dataf(a.data)}`);
+  if (a.kmRest !== undefined) p.push(a.kmRest < 0 ? `passat ${(-a.kmRest).toLocaleString('ca-ES')} km` : `falten ${a.kmRest.toLocaleString('ca-ES')} km`);
+  return p.join(' · ');
+}
+function clsAvis(a) { return ((a.d !== undefined && a.d < 0) || (a.kmRest !== undefined && a.kmRest < 0)) ? 'bad' : 'warn'; }
+function badge(label, d) {
+  if (!d) return `<span class="badge muted">${label}: —</span>`;
+  const n = dies(d);
+  const cls = n < 0 ? 'bad' : n <= 30 ? 'warn' : '';
+  return `<span class="badge ${cls}">${label}: ${dataf(d)}${n < 0 ? ' (vençuda)' : ''}</span>`;
+}
+
+/* ───── Inici ───── */
+function renderInici() {
+  const el = $('#v-inici');
+  if (!S.vehicles.length) {
+    el.innerHTML = `<div class="empty"><div class="big">🚗</div><h2>Benvingut al teu garatge</h2>
+      <p>Comença afegint el primer vehicle.</p><button class="btn" onclick="obrirVehicle()">+ Afegir vehicle</button></div>`;
+    return;
+  }
+  const any = avui().slice(0, 4);
+  const av = avisos();
+  window._avisos = av;
+  let h = `<h3 class="sec">Avisos</h3>`;
+  h += av.length
+    ? av.map((a, i) => `<div class="avis ${clsAvis(a)}" onclick="clicAvis(${i})">${a.ic} <b>${esc(a.txt)}</b> · ${esc(nomVeh(a.v))}<span>${textAvis(a)}</span></div>`).join('')
+    : `<div class="avis ok">👍 Res pendent els pròxims 60 dies</div>`;
+  h += `<h3 class="sec">Vehicles</h3>`;
+  h += S.vehicles.map(v => {
+    const regs = S.registres.filter(r => r.vehicle === v.id);
+    const ult = regs[0];
+    const gast = regs.filter(r => String(r.data).startsWith(any)).reduce((s, r) => s + (Number(r.cost) || 0), 0);
+    return `<div class="vcard" style="--vc:${esc(v.color || '#1f6feb')}" onclick="filtrarVehicle('${v.id}')">
+      <div class="vhead"><div><div class="vnom">${esc(nomVeh(v))}</div><div class="plate">${esc(v.matricula)}</div></div>
+      <div class="vkm">${kmf(v.km)}</div></div>
+      <div class="vrow">${badge('ITV', v.itv)}${v.asseguranca ? badge('Assegurança', v.asseguranca) : ''}</div>
+      <div class="vfoot"><div>${ult ? `Últim: ${(TIPUS[ult.tipus] || TIPUS.Altres).ic} ${esc(ult.titol)} · ${dataf(ult.data)}` : 'Encara sense registres'}</div>
+      <span>${eur(gast)} el ${any}</span></div></div>`;
+  }).join('');
+  const total = S.registres.filter(r => String(r.data).startsWith(any)).reduce((s, r) => s + (Number(r.cost) || 0), 0);
+  h += `<div class="stat"><span>Despesa total ${any}</span><b>${eur(total)}</b></div>`;
+  el.innerHTML = h;
+}
+function clicAvis(i) {
+  const a = window._avisos[i];
+  if (a.r) veureRegistre(a.r.id);
+  else { $('#fTipus').value = a.txt; filtrarVehicle(a.v.id, true); }
+}
+function filtrarVehicle(id, mantenirTipus) {
+  $('#fVeh').value = id; $('#q').value = ''; $('#fAny').value = '';
+  if (!mantenirTipus) $('#fTipus').value = '';
+  renderHistorial(); canviVista('historial');
+}
+
+/* ───── Historial ───── */
+function omplirFiltres() {
+  const fv = $('#fVeh').value, ft = $('#fTipus').value, fa = $('#fAny').value;
+  $('#fVeh').innerHTML = `<option value="">Tots els vehicles</option>` +
+    S.vehicles.map(v => `<option value="${v.id}">${esc(nomVeh(v))}</option>`).join('');
+  $('#fTipus').innerHTML = `<option value="">Tots els tipus</option>` +
+    Object.keys(TIPUS).map(t => `<option>${t}</option>`).join('');
+  const anys = [...new Set(S.registres.map(r => String(r.data).slice(0, 4)).filter(Boolean))].sort().reverse();
+  $('#fAny').innerHTML = `<option value="">Tots els anys</option>` + anys.map(a => `<option>${a}</option>`).join('');
+  $('#fVeh').value = fv; $('#fTipus').value = ft; $('#fAny').value = fa;
+}
+function renderHistorial() {
+  const q = norm($('#q').value).trim().split(/\s+/).filter(Boolean);
+  const fv = $('#fVeh').value, ft = $('#fTipus').value, fa = $('#fAny').value;
+  const res = S.registres.filter(r => {
+    if (fv && r.vehicle !== fv) return false;
+    if (ft && r.tipus !== ft) return false;
+    if (fa && !String(r.data).startsWith(fa)) return false;
+    if (!q.length) return true;
+    const v = vehById(r.vehicle) || {};
+    const hay = norm([r.titol, r.tipus, r.taller, r.notes, r.km, r.cost, v.nom, v.matricula, v.marca, v.model, dataf(r.data)].join(' '));
+    return q.every(t => hay.includes(t));
+  });
+  const total = res.reduce((s, r) => s + (Number(r.cost) || 0), 0);
+  $('#resum').innerHTML = res.length ? `${res.length} registre${res.length > 1 ? 's' : ''} · <b>${eur(total)}</b>` : '';
+  if (!res.length) {
+    $('#llista').innerHTML = `<div class="empty small">${S.registres.length ? 'Cap resultat amb aquests filtres.' : 'Encara no hi ha cap registre.<br>Toca ＋ per afegir-ne un.'}</div>`;
+    return;
+  }
+  let h = '', mes = '';
+  res.forEach(r => {
+    const m = String(r.data).slice(0, 7);
+    if (m !== mes) {
+      mes = m;
+      const [y, mm] = m.split('-');
+      h += `<div class="mes">${MESOS[Number(mm) - 1] || ''} ${y || ''}</div>`;
+    }
+    const t = TIPUS[r.tipus] || TIPUS.Altres;
+    const v = vehById(r.vehicle);
+    const nf = (r.fitxers || []).length;
+    h += `<div class="reg" onclick="veureRegistre('${r.id}')">
+      <div class="ric" style="background:${t.c}22;color:${t.c}">${t.ic}</div>
+      <div class="rbody"><div class="rtit">${esc(r.titol || r.tipus)}</div>
+        <div class="rmeta">${dataf(r.data)} · ${esc(nomVeh(v))}${r.km ? ' · ' + kmf(r.km) : ''}${r.taller ? ' · ' + esc(r.taller) : ''}</div></div>
+      <div class="rright"><div class="rcost">${eur(r.cost)}</div>${nf ? `<div class="clip">📎${nf > 1 ? ' ' + nf : ''}</div>` : ''}</div>
+    </div>`;
+  });
+  $('#llista').innerHTML = h;
+}
+
+/* ───── Vehicles ───── */
+function renderVehicles() {
+  $('#llistaVeh').innerHTML = S.vehicles.length ? S.vehicles.map(v => `
+    <div class="vitem" style="--vc:${esc(v.color || '#1f6feb')}">
+      <div class="info"><b>${esc(nomVeh(v))}</b> <span class="plate">${esc(v.matricula)}</span><br>
+      <small>${esc([v.marca, v.model, v.any].filter(Boolean).join(' · '))}${v.km ? ' · ' + kmf(v.km) : ''}</small></div>
+      <button class="btn ghost sm" onclick="obrirVehicle('${v.id}')">Editar</button>
+    </div>`).join('') : `<div class="empty small">Encara no hi ha cap vehicle.</div>`;
+}
+
+/* ───── Modal ───── */
+function obrirModal(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('open'); document.body.style.overflow = 'hidden'; $('#sheet').scrollTop = 0; }
+function tancarModal() { $('#modal').classList.remove('open'); document.body.style.overflow = ''; nousFitxers = []; fitxersActuals = []; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') tancarModal(); });
+const capModal = t => `<div class="mh"><h2>${t}</h2><button type="button" class="x" onclick="tancarModal()">✕</button></div>`;
+
+/* ───── Configuració ───── */
+function obrirConfig() {
+  const c = cfg();
+  obrirModal(capModal('⚙️ Configuració') + `
+  <form onsubmit="desarConfig(event)">
+    <label>Clau d'accés<input name="clau" type="password" autocomplete="current-password" value="${esc(c.clau)}"></label>
+    <p style="color:var(--mut);font-size:13px;margin:4px 2px 12px">Es desa només en aquest navegador.</p>
+    <button class="btn wide">Desar i connectar</button>
+  </form>`);
+}
+function desarConfig(e) {
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(e.target));
+  lsSet('garatge.clau', d.clau);
+  tancarModal();
+  carregar();
+}
+
+/* ───── Form vehicle ───── */
+function obrirVehicle(id) {
+  const v = id ? vehById(id) : { color: '#1f6feb' };
+  const val = k => esc(v[k] ?? '');
+  obrirModal(capModal(id ? 'Editar vehicle' : 'Nou vehicle') + `
+  <form id="fv" onsubmit="desarVehicle(event)">
+    <input type="hidden" name="id" value="${val('id')}">
+    <label>Nom curt<input name="nom" required placeholder="Ex: Golf, Moto, Furgo" value="${val('nom')}"></label>
+    <div class="g2">
+      <label>Matrícula<input name="matricula" required autocapitalize="characters" value="${val('matricula')}"></label>
+      <label>Color<input type="color" name="color" value="${val('color') || '#1f6feb'}"></label>
+    </div>
+    <div class="g2">
+      <label>Marca<input name="marca" value="${val('marca')}"></label>
+      <label>Model<input name="model" value="${val('model')}"></label>
+    </div>
+    <div class="g2">
+      <label>Any<input name="any" type="number" inputmode="numeric" value="${val('any')}"></label>
+      <label>Km actuals<input name="km" type="number" inputmode="numeric" value="${val('km')}"></label>
+    </div>
+    <div class="g2">
+      <label>Propera ITV<input name="itv" type="date" value="${val('itv')}"></label>
+      <label>Venciment assegurança<input name="asseguranca" type="date" value="${val('asseguranca')}"></label>
+    </div>
+    <button class="btn wide">Desar</button>
+    ${id ? `<button type="button" class="btn danger wide" onclick="eliminarVehicle('${id}')">Eliminar vehicle</button>` : ''}
+  </form>`);
+}
+async function desarVehicle(e) {
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(e.target));
+  loader(true, 'Desant…');
+  try { aplicar(await gasRun('saveVehicle', d)); tancarModal(); toast('Vehicle desat'); }
+  catch (err) { toast(errMsg(err), true); }
+  finally { loader(false); }
+}
+async function eliminarVehicle(id) {
+  const n = S.registres.filter(r => r.vehicle === id).length;
+  if (!confirm(`S'eliminarà el vehicle i els seus ${n} registres del full.\nLes factures es conserven a Drive.\n\nContinuar?`)) return;
+  loader(true, 'Eliminant…');
+  try { aplicar(await gasRun('deleteVehicle', id)); tancarModal(); toast('Vehicle eliminat'); }
+  catch (err) { toast(errMsg(err), true); }
+  finally { loader(false); }
+}
+
+/* ───── Form registre ───── */
+function obrirRegistre(id) {
+  if (!S.vehicles.length) { toast('Primer afegeix un vehicle'); obrirVehicle(); return; }
+  const r = id ? S.registres.find(x => x.id === id)
+    : { data: avui(), tipus: 'Manteniment', vehicle: $('#fVeh').value || (S.vehicles.length === 1 ? S.vehicles[0].id : '') };
+  nousFitxers = [];
+  fitxersActuals = id ? [...(r.fitxers || [])] : [];
+  const val = k => esc(r[k] ?? '');
+  const titols = [...new Set(S.registres.map(x => x.titol).filter(Boolean))];
+  const tallers = [...new Set(S.registres.map(x => x.taller).filter(Boolean))];
+  obrirModal(capModal(id ? 'Editar registre' : 'Nou registre') + `
+  <form id="fr" onsubmit="desarRegistre(event)">
+    <input type="hidden" name="id" value="${val('id')}">
+    <input type="hidden" name="tipus" value="${val('tipus')}">
+    <label>Vehicle<select name="vehicle" required onchange="placeholderKm()">
+      ${r.vehicle ? '' : '<option value="">— Tria el vehicle —</option>'}
+      ${S.vehicles.map(v => `<option value="${v.id}" ${v.id === r.vehicle ? 'selected' : ''}>${esc(nomVeh(v))} · ${esc(v.matricula)}</option>`).join('')}
+    </select></label>
+    <div class="chips" id="chipsTipus">${Object.entries(TIPUS).map(([t, o]) =>
+      `<button type="button" class="chip ${t === r.tipus ? 'on' : ''}" data-t="${t}" onclick="triaTipus(this)">${o.ic} ${t}</button>`).join('')}</div>
+    <label>Què s'ha fet<input name="titol" required list="dlTitols" placeholder="Ex: Canvi d'oli i filtres" value="${val('titol')}"></label>
+    <datalist id="dlTitols">${titols.map(t => `<option value="${esc(t)}">`).join('')}</datalist>
+    <div class="g2">
+      <label>Data<input type="date" name="data" required value="${val('data')}"></label>
+      <label>Quilòmetres<input name="km" type="number" inputmode="numeric" value="${val('km')}"></label>
+    </div>
+    <div class="g2">
+      <label>Cost (€)<input name="cost" type="number" step="0.01" inputmode="decimal" value="${val('cost')}"></label>
+      <label>Taller / lloc<input name="taller" list="dlTallers" value="${val('taller')}"></label>
+    </div>
+    <datalist id="dlTallers">${tallers.map(t => `<option value="${esc(t)}">`).join('')}</datalist>
+    <label>Notes<textarea name="notes" rows="2" placeholder="Peces, referències, garantia…">${val('notes')}</textarea></label>
+    <fieldset class="prox"><legend id="lgProx">Propera revisió (opcional)</legend>
+      <div class="g2">
+        <label>Data<input type="date" name="properaData" value="${val('properaData')}"></label>
+        <label id="lbKm">Als km<input name="propersKm" type="number" inputmode="numeric" value="${val('propersKm')}"></label>
+      </div>
+    </fieldset>
+    <div class="fact">
+      <div class="fact-t">🧾 Factura / fotos</div>
+      <div class="fact-btns">
+        <label class="btn ghost">📷 Fer foto<input type="file" accept="image/*" capture="environment" hidden onchange="afegirFitxers(this)"></label>
+        <label class="btn ghost">📎 Adjuntar<input type="file" accept="image/*,application/pdf" multiple hidden onchange="afegirFitxers(this)"></label>
+      </div>
+      <div id="thumbs" class="thumbs"></div>
+      <button type="button" id="btnLlegir" class="btn ghost wide" onclick="llegirFactura()" hidden>✨ Llegir dades de la factura</button>
+      <details id="ocrTxt" class="ocr" hidden><summary>Text llegit de la factura</summary><pre></pre></details>
+      <div class="hint">Es desa sola a Drive › Garatge › [vehicle] › [any], amb nom descriptiu.</div>
+    </div>
+    <button class="btn wide">Desar</button>
+    ${id ? `<button type="button" class="btn danger wide" onclick="eliminarRegistre('${id}')">Eliminar registre</button>` : ''}
+  </form>`);
+  pintarThumbs(); actualitzaTipus(); placeholderKm();
+}
+function triaTipus(b) {
+  document.querySelectorAll('#chipsTipus .chip').forEach(c => c.classList.toggle('on', c === b));
+  $('#fr').elements.tipus.value = b.dataset.t;
+  actualitzaTipus();
+}
+function actualitzaTipus() {
+  const t = $('#fr').elements.tipus.value;
+  $('#lgProx').textContent = t === 'ITV' ? 'Propera ITV' : t === 'Assegurança' ? 'Pròxim venciment' : 'Propera revisió (opcional)';
+  $('#lbKm').style.visibility = (t === 'ITV' || t === 'Assegurança') ? 'hidden' : '';
+  const tit = $('#fr').elements.titol;
+  if (!tit.value && (t === 'ITV' || t === 'Assegurança')) tit.value = t === 'ITV' ? 'ITV' : 'Renovació assegurança';
+}
+function placeholderKm() {
+  const v = vehById($('#fr').elements.vehicle.value);
+  $('#fr').elements.km.placeholder = v && v.km ? 'Últim: ' + Number(v.km).toLocaleString('ca-ES') : '';
+}
+
+/* Fitxers: les fotos es redueixen al mòbil abans de pujar-les */
+function comprimir(file) {
+  return new Promise((res, rej) => {
+    if (file.type === 'application/pdf') {
+      const fr = new FileReader();
+      fr.onload = () => res({ base64: fr.result.split(',')[1], mime: file.type, nom: file.name, preview: null });
+      fr.onerror = rej; fr.readAsDataURL(file); return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 1800, s = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.round(img.width * s), h = Math.round(img.height * s);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+      const d = c.toDataURL('image/jpeg', 0.8);
+      URL.revokeObjectURL(url);
+      res({ base64: d.split(',')[1], mime: 'image/jpeg', nom: file.name, preview: d });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('format')); };
+    img.src = url;
+  });
+}
+async function afegirFitxers(inp) {
+  const files = [...inp.files]; inp.value = '';
+  for (const f of files) {
+    if (!/^image\/|application\/pdf/.test(f.type)) { toast('Format no admès: ' + f.name, true); continue; }
+    try { nousFitxers.push(await comprimir(f)); }
+    catch (e) { toast("No s'ha pogut llegir " + f.name, true); }
+  }
+  pintarThumbs();
+  // Registre nou sense dades: llegeix la factura automàticament
+  const fr = $('#fr');
+  if (files.length && nousFitxers.length && fr && !fr.elements.id.value && !fr.elements.titol.value && !fr.elements.cost.value) llegirFactura(true);
+}
+function pintarThumbs() {
+  $('#thumbs').innerHTML =
+    fitxersActuals.map((f, i) => `<div class="th"><a href="${esc(f.url)}" target="_blank">${f.mime === 'application/pdf' ? '📄' : '🖼️'}<small>${esc(f.nom)}</small></a>
+      <button type="button" onclick="treureActual(${i})">✕</button></div>`).join('') +
+    nousFitxers.map((f, i) => `<div class="th nou">${f.preview ? `<img src="${f.preview}">` : `<a>📄<small>${esc(f.nom)}</small></a>`}
+      <button type="button" onclick="treureNou(${i})">✕</button></div>`).join('');
+  $('#btnLlegir').hidden = !nousFitxers.length;
+}
+function treureNou(i) { nousFitxers.splice(i, 1); pintarThumbs(); }
+function treureActual(i) {
+  if (!confirm("Aquest fitxer s'enviarà a la paperera de Drive en desar. Continuar?")) return;
+  fitxersActuals.splice(i, 1); pintarThumbs();
+}
+async function desarRegistre(e) {
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(e.target));
+  d.fitxers = fitxersActuals;
+  const pes = nousFitxers.reduce((s, f) => s + f.base64.length, 0);
+  if (pes > 40e6) { toast('Els fitxers són massa grans (màx. ~30 MB)', true); return; }
+  loader(true, nousFitxers.length ? 'Pujant factura a Drive…' : 'Desant…');
+  try {
+    aplicar(await gasRun('saveRecord', d, nousFitxers.map(({ base64, mime, nom }) => ({ base64, mime, nom }))));
+    tancarModal(); toast('Registre desat');
+  }
+  catch (err) { toast(errMsg(err), true); }
+  finally { loader(false); }
+}
+async function eliminarRegistre(id) {
+  if (!confirm("S'eliminarà el registre i les seves factures aniran a la paperera de Drive.\n\nContinuar?")) return;
+  loader(true, 'Eliminant…');
+  try { aplicar(await gasRun('deleteRecord', id)); tancarModal(); toast('Registre eliminat'); }
+  catch (err) { toast(errMsg(err), true); }
+  finally { loader(false); }
+}
+
+/* ───── Lectura de factures (OCR → camps del formulari) ───── */
+const FEINES = [
+  { re: /recambios|recanvis|repuestos|recambio|recanvi|autopartes|recambistas/, tit: null, tipus: 'Recanvis' },
+  { re: /\bi\.?t\.?v\b|inspeccion tecnica|inspeccio tecnica/, tit: 'ITV', tipus: 'ITV' },
+  { re: /\bpoliza\b|\bpolissa\b|aseguradora|asseguradora|\bseguro (del |de )?(auto|coche|vehiculo|moto)|recibo de prima/, tit: 'Renovació assegurança', tipus: 'Assegurança' },
+  { re: /\bivtm\b|impuesto (sobre |de )?(vehiculos|circulacion)|impost (sobre |de )?(vehicles|circulacio)/, tit: 'Impost de circulació', tipus: 'Impostos' },
+  { re: /\baceite\b|\boli\b|\blubricante|\b[05]w-?\d0\b|\b10w-?\d0\b/, tit: "canvi d'oli", tipus: 'Manteniment' },
+  { re: /\bfiltros?\b|\bfiltres?\b/, tit: 'filtres', tipus: 'Manteniment' },
+  { re: /\bfrenos?\b|\bfrens?\b|pastillas?|pastilles?|discos? de fren/, tit: 'frens', tipus: 'Manteniment' },
+  { re: /\bbujias?\b|\bbugies?\b/, tit: 'bugies', tipus: 'Manteniment' },
+  { re: /escobillas?|limpiaparabrisas|eixugaparabrises/, tit: 'eixugaparabrises', tipus: 'Manteniment' },
+  { re: /\brevision\b|\brevisio\b|mantenimiento|manteniment/, tit: 'revisió', tipus: 'Manteniment' },
+  { re: /neumaticos?|pneumatics?|\bcubiertas?\b/, tit: 'pneumàtics', tipus: 'Pneumàtics' },
+  { re: /alineacion|alineacio|paralelo|equilibrado|equilibrat/, tit: 'alineació', tipus: 'Pneumàtics' },
+  { re: /\bbaterias?\b|\bbateries\b/, tit: 'bateria', tipus: 'Reparació' },
+  { re: /embrague|embragatge/, tit: 'embragatge', tipus: 'Reparació' },
+  { re: /distribucion|distribucio/, tit: 'distribució', tipus: 'Reparació' },
+  { re: /amortiguador|amortidor/, tit: 'amortidors', tipus: 'Reparació' },
+  { re: /\bescape\b|escapament/, tit: "tub d'escapament", tipus: 'Reparació' },
+  { re: /aire acondicionado|climatizacion|aire condicionat|carga de gas/, tit: 'aire condicionat', tipus: 'Reparació' },
+  { re: /\baveria\b|\bavaria\b|reparacion|reparacio/, tit: 'reparació', tipus: 'Reparació' }
+];
+const PRIORITAT_TIPUS = ['ITV', 'Assegurança', 'Impostos', 'Recanvis', 'Reparació', 'Manteniment', 'Pneumàtics'];
+const MESOS_OCR = { ene: 1, gen: 1, feb: 2, mar: 3, abr: 4, may: 5, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, sep: 9, oct: 10, nov: 11, dic: 12, des: 12 };
+const RE_FUTUR = /proxim|propera|siguiente|vencim|venciment|caduc|valid[ao]? hasta|valid fins|fecha limite|data limit|hasta el|fins al/;
+
+function extreuCamps(txt, vehicles) {
+  const linies = String(txt || '').split(/\r?\n/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const N = linies.map(norm);
+  const out = {};
+  const anyMax = new Date().getFullYear() + 1;
+
+  // Dates: "16/10/2026", "16-10-26", "16.10.2026", "16 de octubre de 2026"
+  const iso = (d, m, y) => {
+    d = +d; m = +m; y = +y; if (y < 100) y += 2000;
+    if (m < 1 || m > 12 || d < 1 || d > 31 || y < 2000 || y > anyMax + 10) return null;
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  };
+  const datesDe = s => {
+    const r = [];
+    for (const m of s.matchAll(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})\b/g)) { const d = iso(m[1], m[2], m[3]); if (d) r.push(d); }
+    for (const m of s.matchAll(/\b(\d{1,2}) (?:de |d')?([a-z]{3})[a-z]* (?:de |del )?(\d{4})\b/g)) {
+      const mes = MESOS_OCR[m[2]]; if (mes) { const d = iso(m[1], mes, m[3]); if (d) r.push(d); }
+    }
+    return r;
+  };
+  const DATA_CLAU = /\bfecha\b|\bdata\b|\bfra\b|fecha factura|data factura|emision|emissio/;
+  const avuiIso = avui();
+  N.forEach((s, i) => {
+    const ds = datesDe(s).length ? datesDe(s) : (DATA_CLAU.test(s) && N[i + 1] ? datesDe(N[i + 1]) : []);
+    if (!ds.length) return;
+    if (RE_FUTUR.test(s)) { if (!out.properaData) out.properaData = ds[0]; return; }
+    if (/nacimiento|naixement|matriculacion|matriculacio|expedicion/.test(s)) return;
+    if (DATA_CLAU.test(s) && !out._dataClau) { out.data = ds[0]; out._dataClau = true; return; }
+    if (!out.data && ds[0] <= avuiIso) out.data = ds[0];
+  });
+  delete out._dataClau;
+
+  // Quilòmetres: "Km: 123.456", "123456 km", "Kilometraje 98.000"
+  const RE_KM1 = /\b(?:kms?|kilometr[a-z]*|quilometr[a-z]*)\b\.?\s*[:.]?\s*(\d{1,3}(?:[.\s]\d{3})+|\d{3,7})\b/;
+  const RE_KM2 = /\b(\d{1,3}(?:[.\s]\d{3})+|\d{3,7})\s*kms?\b(?!\/)/;
+  N.forEach(s => {
+    const m = s.match(RE_KM1) || s.match(RE_KM2); if (!m) return;
+    const km = Number(m[1].replace(/[.\s]/g, ''));
+    if (km < 50 || km > 2e6) return;
+    if (RE_FUTUR.test(s)) { if (!out.propersKm) out.propersKm = km; }
+    else if (!out.km) out.km = km;
+  });
+
+  // Import total: la xifra més alta de les línies "total" (no subtotal/base/IVA)
+  const imports = s => [...s.replace(/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b/g, ' ')
+    .matchAll(/(?<![\d.,])(\d{1,3}(?:[.\s]\d{3})+|\d+)[,.](\d{2})(?![\d%]|\s?%)/g)]
+    .map(m => Number(m[1].replace(/[.\s]/g, '') + '.' + m[2])).filter(n => n > 0 && n < 1e6);
+  let totals = [];
+  N.forEach((s, i) => {
+    if (!/\btotal\b|a pagar|importe|import\b/.test(s)) return;
+    if (/sub ?total|base imp|total (de )?iva|total dto|descuento|descompte|\bneto\b/.test(s) && !/total factura|a pagar|iva incl/.test(s)) return;
+    const xs = imports(s);
+    totals.push(...(xs.length ? xs : imports(N[i + 1] || '').concat(imports(N[i + 2] || ''))));
+  });
+  if (!totals.length) totals = N.filter(s => /€|\beur\b|euros?/.test(s)).flatMap(imports);
+  // Millor pista: base + IVA = total (21 %, 10 % o 4 %), encara que les xifres estiguin en files soltes
+  const totes = [...new Set(N.flatMap(imports))];
+  let ambIva = null;
+  totes.forEach(b => [0.21, 0.10, 0.04].forEach(r => {
+    const iva = totes.find(x => Math.abs(x - b * r) < 0.015);
+    if (iva === undefined) return;
+    const t = totes.find(x => Math.abs(x - (b + iva)) < 0.015);
+    if (t !== undefined && (ambIva === null || t > ambIva)) ambIva = t;
+  }));
+  if (ambIva !== null) out.cost = ambIva;
+  else if (totals.length) out.cost = Math.max(...totals);
+
+  // Vehicle: matrícula d'algun vehicle que aparegui al text
+  const compacte = String(txt || '').toUpperCase().replace(/[\s\-.]/g, '');
+  const veh = (vehicles || []).find(v => v.matricula && compacte.includes(String(v.matricula).toUpperCase().replace(/[\s\-.]/g, '')));
+  if (veh) out.vehicle = veh.id;
+
+  // Taller: a la capçalera, la línia que sembli el nom d'un negoci
+  const cap = linies.slice(0, 10);
+  const RE_NEGOCI = /taller|recambios|recanvis|repuestos|garaje|garatge|motor|auto|neumatic|pneumatic|mecani|servic|\bs\.?\s?l\.?u?\b|\bs\.?\s?a\.?\b|\bs\.?\s?c\.?p?\b|\bc\.?b\.?\b|itv|seguros|assegurances|mutua/i;
+  const RE_NO = /factura|fecha|\bdata\b|cif|nif|n\.?i\.?f|tel[eèf.:]|fax|www|@|https?:|c\/|calle|carrer|avda|avinguda|\bcp\b|^\d|cliente|client|pagina|p[aà]g\./i;
+  const bona = l => /[a-zà-ü]{3}/i.test(l) && !RE_NO.test(norm(l)) && l.length <= 60;
+  // També el peu: "RECAMBIOS ARCE, S.L. • REG. MERC…" → fins a la forma societària
+  const RE_SOC = /^(.{3,50}?\b(?:s\.\s?l\.?(?:u\.?)?|s\.\s?a\.?|s\.\s?c\.?p?\.?|s\.\s?coop\.?))(?=\s|,|$)/i;
+  const peu = linies.map(l => (l.match(RE_SOC) || [])[1]).find(l => l && /[a-z]{3}/i.test(l) && !RE_NO.test(norm(l)));
+  let taller = cap.find(l => RE_NEGOCI.test(norm(l)) && bona(l)) || peu || cap.find(bona);
+  const taller0 = taller;
+  if (taller) {
+    taller = ((taller.match(RE_SOC) || [])[1] || taller).split(/\s[•|·]\s/)[0];
+    if (peu && norm(peu).startsWith(norm(taller).replace(/[,.\s]+$/, ''))) taller = peu; // "RECAMBIOS arce" → "RECAMBIOS ARCE, S.L."
+    taller = taller.replace(/\s*[-–|·,]\s*$/, '').trim();
+    if (taller === taller.toUpperCase()) taller = taller.toLowerCase().replace(/(^|[\s(])([a-zà-ü])/g, (m, a, b) => a + b.toUpperCase())
+      .replace(/\bS\.\s?(l|a|c)\.?(u)?\.?$/i, (m) => m.toUpperCase());
+    out.taller = taller;
+  }
+
+  // Què s'ha fet + tipus, segons paraules clau
+  const tot = N.filter(s => !RE_FUTUR.test(s)).join('\n');
+  const trobades = FEINES.filter(f => f.re.test(tot));
+  if (trobades.length) {
+    const tipus = PRIORITAT_TIPUS.find(t => trobades.some(f => f.tipus === t));
+    out.tipus = tipus;
+    const tits = [...new Set(trobades.filter(f => f.tit).filter(f => ['ITV', 'Assegurança', 'Impostos'].includes(tipus) ? f.tipus === tipus : !['ITV', 'Assegurança', 'Impostos'].includes(f.tipus)).map(f => f.tit))].slice(0, 4);
+    const t = tits.length > 1 ? tits.slice(0, -1).join(', ') + ' i ' + tits[tits.length - 1] : (tits[0] || '');
+    if (t) out.titol = t.charAt(0).toUpperCase() + t.slice(1);
+    // Notes: les línies de concepte que han coincidit
+    const conc = linies.filter((l, i) => l !== out.taller && linies[i] !== taller0 && !RE_FUTUR.test(N[i]) &&
+      trobades.some(f => f.tit && f.re.test(N[i])) && l.length <= 90);
+    if (conc.length) out.notes = [...new Set(conc)].slice(0, 6).join('\n');
+  }
+  return out;
+}
+
+async function llegirFactura(auto) {
+  if (!nousFitxers.length) { toast('Primer fes una foto o adjunta la factura'); return; }
+  loader(true, 'Llegint la factura…');
+  try {
+    const txt = await gasRun('llegirFactura', nousFitxers.map(({ base64, mime }) => ({ base64, mime })));
+    const box = $('#ocrTxt');
+    if (box) { box.hidden = false; box.querySelector('pre').textContent = String(txt || '').trim() || '(buit)'; }
+    if (!String(txt || '').trim()) { toast("L'OCR no ha trobat text a la imatge. Prova una foto més recta i amb més llum.", true); return; }
+    const n = omplirAmb(extreuCamps(txt, S.vehicles));
+    toast(n ? `${n} camps omplerts amb la factura. Revisa'ls abans de desar.` : "S'ha llegit text però no s'hi han trobat dades (mira «Text llegit»)", !n);
+  }
+  catch (err) { toast(errMsg(err), true); }
+  finally { loader(false); }
+}
+function omplirAmb(c) {
+  const f = $('#fr'); if (!f) return 0;
+  let n = 0;
+  const posa = (k, v) => {
+    if (buit(v) || !f.elements[k]) return;
+    if (k === 'notes' && f.elements.notes.value.trim()) return; // no trepitja notes escrites
+    f.elements[k].value = v; f.elements[k].classList.add('auto'); n++;
+  };
+  if (c.vehicle) { posa('vehicle', c.vehicle); placeholderKm(); }
+  if (c.tipus) { const b = document.querySelector(`#chipsTipus .chip[data-t="${c.tipus}"]`); if (b) triaTipus(b); }
+  ['titol', 'data', 'km', 'cost', 'taller', 'notes', 'properaData', 'propersKm'].forEach(k => posa(k, c[k]));
+  if (c.tipus === 'ITV' || c.tipus === 'Assegurança') f.elements.propersKm.value = '';
+  return n;
+}
+
+/* ───── Detall ───── */
+function veureRegistre(id) {
+  const r = S.registres.find(x => x.id === id); if (!r) return;
+  const v = vehById(r.vehicle) || {};
+  const t = TIPUS[r.tipus] || TIPUS.Altres;
+  const row = (k, val) => buit(val) || val === '' ? '' : `<div class="drow"><span>${k}</span><span>${val}</span></div>`;
+  const prox = [r.properaData ? dataf(r.properaData) : '', r.propersKm ? kmf(r.propersKm) : ''].filter(Boolean).join(' · ');
+  const fitxers = r.fitxers || [];
+  obrirModal(capModal(`${t.ic} ${esc(r.titol || r.tipus)}`) + `
+    <div class="det">
+      ${row('Vehicle', esc(nomVeh(v)) + ' · ' + esc(v.matricula || ''))}
+      ${row('Tipus', esc(r.tipus))}
+      ${row('Data', dataf(r.data))}
+      ${row('Quilòmetres', kmf(r.km))}
+      ${row('Cost', eur(r.cost))}
+      ${row('Taller', esc(r.taller))}
+      ${row('Notes', esc(r.notes))}
+      ${row(r.tipus === 'ITV' ? 'Propera ITV' : r.tipus === 'Assegurança' ? 'Venciment' : 'Propera revisió', prox)}
+    </div>
+    ${fitxers.length ? `<div class="gal">${fitxers.map(f => `<a class="gimg" href="${esc(f.url)}" target="_blank" data-id="${esc(f.id)}">Carregant…</a>`).join('')}</div>` : ''}
+    <div class="g2"><button class="btn ghost" onclick="obrirRegistre('${r.id}')">✏️ Editar</button>
+    <button class="btn danger" onclick="eliminarRegistre('${r.id}')">🗑️ Eliminar</button></div>`);
+  fitxers.forEach(async f => {
+    const pinta = src => {
+      const a = document.querySelector(`.gimg[data-id="${f.id}"]`);
+      if (a) a.innerHTML = src ? `<img src="${src}" alt="">` : `📄 ${esc(f.nom)}`;
+    };
+    if (thumbCache.has(f.id)) return pinta(thumbCache.get(f.id));
+    try { const src = await gasRun('getFitxer', f.id); thumbCache.set(f.id, src); pinta(src); }
+    catch (e) { pinta(null); }
+  });
+}
+
+/* ───── Inici ───── */
+$('#q').addEventListener('input', renderHistorial);
+['#fVeh', '#fTipus', '#fAny'].forEach(s => $(s).addEventListener('change', renderHistorial));
+carregar();
+</script>
+</body>
+</html>
+
