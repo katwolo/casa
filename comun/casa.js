@@ -9,7 +9,7 @@
   // los enlaces funcionen igual desde la portada, Ajustes o una sección.
   const RAIZ = new URL('../', document.currentScript.src).href;
 
-  // href: las secciones ya migradas abren su copia dentro de Casa; el resto, la web original.
+  // Cada sección vive en su carpeta dentro de Casa.
   const SECCIONES = [
     { id: 'comidas', nombre: 'Planificación de comidas', emoji: '🍲', href: RAIZ + 'comidas/' },
     { id: 'botiquin', nombre: 'Botiquín', emoji: '💊', href: RAIZ + 'botiquin/' },

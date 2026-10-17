@@ -60,7 +60,7 @@ Pega los archivos nuevos y haz **Implementar → Gestionar implementaciones → 
 
 | Sección | Archivo | Propiedad con la hoja | Notas |
 |---|---|---|---|
-| Comidas | `comidas.gs` | `COMIDAS_SPREADSHEET_ID` | Usa la misma hoja que la web original si_chef. Mientras uses las dos webs a la vez, la caché de Casa dura solo 5 minutos para que los cambios hechos desde la original se vean pronto. |
+| Comidas | `comidas.gs` | `COMIDAS_SPREADSHEET_ID` | Usa la misma hoja que la web original si_chef. La caché de Casa dura 5 minutos, por si alguien edita la hoja directamente o desde el script antiguo. |
 | Botiquín | `botiquin.gs` | `BOTIQUIN_SPREADSHEET_ID` | Usa la misma hoja que la web original MediHome (pestañas Medicaments, Tractaments y Dosis). |
 | Pesos | `pesos.gs` | `PESOS_SPREADSHEET_ID` | Usa la misma hoja que la web original registro-peso. Las fechas se leen y escriben en la zona horaria de la propia hoja, para que no cambien de día. |
 | Garaje | `garaje.gs` | `GARAJE_SS_ID` y `GARAJE_ROOT_ID` | Usa la misma hoja y la misma carpeta de facturas que la web original garatge. A diferencia del original, no crea nada si faltan los IDs: muestra un error. Necesita los permisos de Drive y de conexiones externas (para leer facturas). |
