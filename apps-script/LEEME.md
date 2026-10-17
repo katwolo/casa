@@ -10,6 +10,7 @@ Un único proyecto de Apps Script para todas las secciones de Casa. Controla qui
 | `acceso.gs` | Claves, permisos de la pareja y registro de intentos fallidos. |
 | `comidas.gs` | Sección Comidas: recetas, menú semanal y lista de la compra. |
 | `botiquin.gs` | Sección Botiquín: medicamentos, tratamientos y dosis. |
+| `pesos.gs` | Sección Pesos: perfiles y registros de peso. |
 | `appsscript.json` | Configuración del proyecto (zona horaria y publicación como app web). |
 
 ## Instalación (una sola vez)
@@ -36,6 +37,7 @@ Si quieres no tener que pegar la URL en cada dispositivo, ponla también en `com
 | `CLAVE_ADMIN` | Tú, a mano | Tu clave. Acceso total. |
 | `COMIDAS_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de Comidas (la misma que usa si_chef). |
 | `BOTIQUIN_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet del botiquín (la misma que usa MediHome). |
+| `PESOS_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de pesos (la misma que usa registro-peso). |
 | `CLAVE_PAREJA` | Ajustes | Clave de tu pareja. Se crea, cambia o quita desde Ajustes. |
 | `PERMISOS_PAREJA` | Ajustes | Ninguno / ver / editar en cada sección. |
 | `AVISO_EMAIL` | Ajustes | `si` para recibir un correo si alguien usa una clave incorrecta (como mucho uno por hora). |
@@ -51,6 +53,7 @@ Pega los archivos nuevos y haz **Implementar → Gestionar implementaciones → 
 |---|---|---|---|
 | Comidas | `comidas.gs` | `COMIDAS_SPREADSHEET_ID` | Usa la misma hoja que la web original si_chef. Mientras uses las dos webs a la vez, la caché de Casa dura solo 5 minutos para que los cambios hechos desde la original se vean pronto. |
 | Botiquín | `botiquin.gs` | `BOTIQUIN_SPREADSHEET_ID` | Usa la misma hoja que la web original MediHome (pestañas Medicaments, Tractaments y Dosis). |
+| Pesos | `pesos.gs` | `PESOS_SPREADSHEET_ID` | Usa la misma hoja que la web original registro-peso. Las fechas se leen y escriben en la zona horaria de la propia hoja, para que no cambien de día. |
 
 Para añadir una sección: crea su archivo `.gs` en el proyecto, añade su propiedad con el ID de la hoja y publica una **nueva versión**. La primera vez que una sección use un servicio nuevo de Google (Sheets, Drive…), el editor te pedirá autorizarlo.
 

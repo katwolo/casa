@@ -11,7 +11,7 @@
 //   { ok: true, ... }  o  { ok: false, error, codigo }
 // =====================================================================
 
-const VERSION = '4';
+const VERSION = '5';
 
 // Secciones de casa, en el orden de la portada.
 const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', 'notes'];
@@ -24,6 +24,7 @@ function seccionesMigradas_() {
   return {
     comidas: SECCION_COMIDAS,
     botiquin: SECCION_BOTIQUIN,
+    pesos: SECCION_PESOS,
   };
 }
 
@@ -76,7 +77,7 @@ function atender_(usuario, req) {
 // autorizar el acceso a tus hojas y al correo. Después, publica una versión nueva.
 function autorizar() {
   const props = PropertiesService.getScriptProperties();
-  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID'].forEach(function (p) {
+  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID', 'PESOS_SPREADSHEET_ID'].forEach(function (p) {
     const id = props.getProperty(p);
     if (!id) {
       console.log(p + ': falta la propiedad');

@@ -5,10 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Registro de Peso</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="../comun/casa.js?v=5"></script>
+  <style>
+    /* Casa: aviso de conexión y modo solo lectura */
+    .casa-aviso { text-align: center; line-height: 1.5; }
+    .casa-aviso a { color: inherit; font-weight: 700; }
+    body.solo-ver .gear-btn, body.solo-ver .add-btn { display: none !important; }
+    body.solo-ver::before {
+      content: "Modo solo lectura: puedes ver los registros, pero no añadir ni cambiar nada.";
+      display: block; margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px;
+      font-size: 14px; text-align: center; background: rgba(127, 127, 127, .14);
+    }
+  </style>
 </head>
 <body>
   <div id="app"><div class="loading">Cargando…</div></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
