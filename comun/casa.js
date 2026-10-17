@@ -13,7 +13,7 @@
   const SECCIONES = [
     { id: 'comidas', nombre: 'Planificación de comidas', emoji: '🍲', href: RAIZ + 'comidas/' },
     { id: 'botiquin', nombre: 'Botiquín', emoji: '💊', href: RAIZ + 'botiquin/' },
-    { id: 'garaje', nombre: 'Garaje', emoji: '🔧', href: 'https://katwolo.github.io/garatge/' },
+    { id: 'garaje', nombre: 'Garaje', emoji: '🔧', href: RAIZ + 'garaje/' },
     { id: 'pesos', nombre: 'Registro de pesos', emoji: '⚖️', href: RAIZ + 'pesos/' },
     { id: 'economia', nombre: 'Economía', emoji: '💶', href: 'https://katwolo.github.io/economia/' },
     { id: 'notes', nombre: 'Notes', emoji: '📝', href: 'https://katwolo.github.io/diario/#/crear' },

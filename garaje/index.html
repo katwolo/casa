@@ -137,7 +137,16 @@ fieldset.prox legend{font-size:13px;font-weight:700;color:var(--mut);padding:0 6
 [hidden]{display:none!important}
 .ocr{margin-top:8px;font-size:13px;color:var(--mut)}.ocr pre{white-space:pre-wrap;max-height:220px;overflow:auto;background:var(--bg);padding:8px;border-radius:8px}
 input.auto,select.auto,textarea.auto{background:color-mix(in srgb,#facc15 22%,var(--card));border-color:#eab308}
+/* Casa: aviso de conexión y modo solo lectura */
+.casa-aviso{margin:12px 0;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.45;text-align:center;background:rgba(127,127,127,.14)}
+.casa-aviso a{color:inherit;font-weight:700}
+body.solo-ver .fab,
+body.solo-ver [onclick^="obrirVehicle"],
+body.solo-ver [onclick^="obrirRegistre"],
+body.solo-ver [onclick^="eliminar"],
+body.solo-ver [onclick^="llegirFactura"]{display:none!important}
 </style>
+<script src="../comun/casa.js?v=6"></script>
 </head>
 <body>
 <header class="top">
@@ -199,33 +208,15 @@ let nousFitxers = [];
 let fitxersActuals = [];
 const thumbCache = new Map();
 
-/* ───── Connexió amb Apps Script ───── */
-// URL de la implementació de l'aplicació web (acaba en /exec). Es pot deixar aquí fixa
-// o configurar-la des de ⚙️ (es desa al navegador).
-const GAS_URL_PER_DEFECTE = 'https://script.google.com/macros/s/AKfycbznt2QDfCrVCKj40kfhuXplaEuX62z44XTVub1C5WeoW4HwgVV4BVw__iA5OdIYI8vL/exec';
-const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sense emmagatzematge */ } };
-// La URL és sempre la del codi; s'esborra qualsevol URL antiga desada al navegador
-try { localStorage.removeItem('garatge.url'); } catch (e) { /* sense emmagatzematge */ }
-const cfg = () => ({ url: GAS_URL_PER_DEFECTE, clau: lsGet('garatge.clau') });
+/* ───── Connexió amb el script Casa ───── */
+// La URL i la clau vénen de Casa > Ajustes (comun/casa.js); el script Casa comprova el permís.
+const PERMIS = Casa.permiso('garaje'); // 'editar', 'ver', 'ninguno' o null (sense connectar)
+const LECTURES = ['getData', 'getFitxer'];
 
 async function gasRun(fn, ...args) {
-  const { url, clau } = cfg();
-  let res;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita el preflight CORS
-      body: JSON.stringify({ clau, fn, args })
-    });
-  } catch (e) { throw new Error('No s\'ha pogut connectar amb l\'Apps Script'); }
-  let out;
-  try { out = await res.json(); } catch (e) { throw new Error('L\'Apps Script no respon bé: revisa que estigui autoritzat (funció autoritzar) i implementat amb accés "Qualsevol persona"'); }
-  if (!out.ok) {
-    if (out.codi === 'CLAU') obrirConfig();
-    throw new Error(out.error || 'Error desconegut');
-  }
-  return out.data;
+  if (!LECTURES.includes(fn) && PERMIS === 'ver') throw new Error('Solo puedes ver el garaje, no modificarlo.');
+  const j = await Casa.llamar('garaje', fn, { args });
+  return j.datos;
 }
 
 /* ───── Utilitats ───── */
@@ -416,20 +407,13 @@ const capModal = t => `<div class="mh"><h2>${t}</h2><button type="button" class=
 
 /* ───── Configuració ───── */
 function obrirConfig() {
-  const c = cfg();
+  const c = Casa.conexion();
+  const estat = !(c.url && c.clave) ? 'Este dispositivo no está conectado a Casa.'
+    : 'Conectado a Casa' + (PERMIS === 'ver' ? ' · solo puedes ver.' : '.');
   obrirModal(capModal('⚙️ Configuració') + `
-  <form onsubmit="desarConfig(event)">
-    <label>Clau d'accés<input name="clau" type="password" autocomplete="current-password" value="${esc(c.clau)}"></label>
-    <p style="color:var(--mut);font-size:13px;margin:4px 2px 12px">Es desa només en aquest navegador.</p>
-    <button class="btn wide">Desar i connectar</button>
-  </form>`);
-}
-function desarConfig(e) {
-  e.preventDefault();
-  const d = Object.fromEntries(new FormData(e.target));
-  lsSet('garatge.clau', d.clau);
-  tancarModal();
-  carregar();
+  <p style="margin:4px 2px 12px">${esc(estat)}</p>
+  <p style="color:var(--mut);font-size:13px;margin:4px 2px 12px">La conexión y la clave se gestionan desde Casa.</p>
+  <a class="btn wide" href="../ajustes/" style="text-decoration:none;text-align:center;display:block">Ajustes de Casa</a>`);
 }
 
 /* ───── Form vehicle ───── */
@@ -817,7 +801,21 @@ function veureRegistre(id) {
 /* ───── Inici ───── */
 $('#q').addEventListener('input', renderHistorial);
 ['#fVeh', '#fTipus', '#fAny'].forEach(s => $(s).addEventListener('change', renderHistorial));
-carregar();
+// Casa: sense accés, la secció no existeix per a aquesta persona; torna a la portada.
+(function () {
+  if (PERMIS === 'ninguno') { location.replace(Casa.RAIZ); return; }
+  const c = Casa.conexion();
+  const avis = html => { const p = document.createElement('p'); p.className = 'casa-aviso'; p.innerHTML = html; document.querySelector('main').prepend(p); };
+  if (!(c.url && c.clave)) {
+    avis('Este dispositivo no está conectado. <a href="../ajustes/">Conéctalo en Ajustes de Casa</a> con tu clave.');
+    return;
+  }
+  if (PERMIS === 'ver') {
+    document.body.classList.add('solo-ver');
+    avis('Modo solo lectura: puedes ver los vehículos, el historial y las facturas, pero no cambiarlos.');
+  }
+  carregar();
+})();
 </script>
 </body>
 </html>
