@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ajustes · Casa</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="../comun/estilo.css">
+<script src="../comun/casa.js"></script>
+<style>
+body { padding-block: max(20px, env(safe-area-inset-top, 0px)) max(40px, env(safe-area-inset-bottom, 0px)); font-size: 16px; }
+main { max-width: 620px; margin: 0 auto; display: grid; gap: 18px; }
+
+.top { display: flex; align-items: center; gap: 12px; }
+.volver {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--fg); text-decoration: none; font-weight: 700; font-size: 14px;
+}
+.volver:hover, .volver:focus-visible { border-color: var(--muted); outline: none; }
+h1 { margin: 6px 0 4px; font-weight: 800; font-size: clamp(30px, 7vw, 40px); line-height: 1.1; }
+
+section {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  padding: 18px; display: grid; gap: 14px; min-width: 0;
+}
+section > header { display: grid; gap: 2px; }
+h2 { margin: 0; font-size: 19px; font-weight: 800; }
+.sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.ambito {
+  justify-self: start; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; margin-bottom: 4px;
+}
+
+form { display: grid; gap: 12px; }
+label.campo { display: grid; gap: 5px; font-weight: 700; font-size: 14px; }
+input[type="text"], input[type="url"], input[type="password"], select {
+  font: inherit; font-weight: 500; color: var(--fg); background: var(--bg);
+  border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; width: 100%; min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--r3); outline-offset: 2px; }
+
+.botones { display: flex; flex-wrap: wrap; gap: 8px; }
+button {
+  font: inherit; font-weight: 800; font-size: 14px; cursor: pointer;
+  border-radius: 999px; padding: 9px 16px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg);
+}
+button.principal { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button.peligro { color: var(--peligro); border-color: color-mix(in srgb, var(--peligro) 50%, transparent); }
+button:disabled { opacity: .5; cursor: progress; }
+
+.estado { margin: 0; font-size: 14px; font-weight: 700; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+.estado.ok { color: var(--ok); }
+.estado.error { color: var(--peligro); }
+.estado.info { color: var(--muted); }
+
+.segmentos { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.segmentos label { position: relative; }
+.segmentos input { position: absolute; opacity: 0; pointer-events: none; }
+.segmentos span {
+  display: block; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--muted);
+}
+.segmentos input:checked + span { background: var(--fg); color: var(--bg); }
+.segmentos input:focus-visible + span { outline: 2px solid var(--r3); outline-offset: 1px; }
+
+ul.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fila {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 10px; border-radius: 14px; background: var(--bg);
+}
+.fila .emoji {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--f); font-size: 18px; flex: none;
+}
+.fila .nombre { font-weight: 800; color: var(--r); flex: 1 1 140px; min-width: 0; }
+.mover { display: flex; gap: 4px; }
+.mover button, .visible { padding: 6px 10px; }
+.visible { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.visible input { width: 18px; height: 18px; accent-color: var(--fg); }
+
+.clave-nueva {
+  display: grid; gap: 8px; padding: 12px; border-radius: 14px;
+  border: 2px dashed var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--bg));
+}
+.clave-nueva code { font-size: 22px; font-weight: 800; letter-spacing: .05em; word-break: break-all; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+.registro { font-size: 14px; }
+.registro .fila { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+.registro time { font-weight: 800; font-variant-numeric: tabular-nums; }
+.registro .det { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.vacio { color: var(--muted); font-size: 14px; margin: 0; }
+
+.interruptor { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+.interruptor input { width: 20px; height: 20px; accent-color: var(--ok); }
+
+.enlaces a { color: inherit; text-decoration: none; }
+.enlaces a:hover .nombre, .enlaces a:focus-visible .nombre { text-decoration: underline; }
+.enlaces .flecha { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a class="volver" href="../">← Casa</a></div>
+  <h1>Ajustes</h1>
+
+  <!-- Conexión -->
+  <section id="sec-conexion" aria-labelledby="t-conexion">
+    <header>
+      <span class="ambito">Este dispositivo</span>
+      <h2 id="t-conexion">Conexión</h2>
+      <p class="sub">Escribe tu clave una sola vez y todas las secciones de Casa la usarán en este dispositivo.</p>
+    </header>
+    <p class="estado info" id="estado-conexion">Este dispositivo no está conectado.</p>
+    <form id="f-conexion" autocomplete="off">
+      <label class="campo" id="campo-url">URL del script Casa
+        <input type="url" id="i-url" name="url" placeholder="https://script.google.com/macros/s/…/exec" required>
+      </label>
+      <label class="campo">Clave
+        <input type="password" id="i-clave" name="clave" required autocomplete="current-password">
+      </label>
+      <div class="botones">
+        <button type="submit" class="principal" id="b-conectar">Conectar</button>
+        <button type="button" class="peligro" id="b-desconectar" hidden>Desconectar este dispositivo</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Portada -->
+  <section aria-labelledby="t-portada">
+    <header>
+      <span class="ambito">Este dispositivo</span>
+      <h2 id="t-portada">Portada</h2>
+      <p class="sub">Cómo se ve Casa en este dispositivo. Los cambios se guardan al momento.</p>
+    </header>
+    <div class="campo" role="group" aria-labelledby="l-tema">
+      <span id="l-tema" style="font-weight:700;font-size:14px">Tema</span>
+      <div class="segmentos" id="tema">
+        <label><input type="radio" name="tema" id="tema-auto" value="auto"><span>Automático</span></label>
+        <label><input type="radio" name="tema" id="tema-claro" value="claro"><span>Claro</span></label>
+        <label><input type="radio" name="tema" id="tema-oscuro" value="oscuro"><span>Oscuro</span></label>
+      </div>
+    </div>
+    <label class="campo">Tu nombre para el saludo (opcional)
+      <input type="text" id="i-nombre" maxlength="30" placeholder="Buenos días, …">
+    </label>
+    <div class="campo">
+      <span style="font-weight:700;font-size:14px">Secciones: orden y cuáles se muestran</span>
+      <ul class="lista" id="lista-portada"></ul>
+    </div>
+  </section>
+
+  <!-- Pareja (solo administrador) -->
+  <section id="sec-pareja" aria-labelledby="t-pareja" hidden>
+    <header>
+      <span class="ambito">Script Casa · solo tú</span>
+      <h2 id="t-pareja">Acceso de tu pareja</h2>
+      <p class="sub">Tu pareja entra con su propia clave. Puedes cambiarla o quitarla cuando quieras sin que la tuya cambie.</p>
+    </header>
+    <p class="estado info" id="estado-pareja">Cargando…</p>
+    <div class="clave-nueva" id="clave-nueva" hidden>
+      <strong>Nueva clave de tu pareja</strong>
+      <code id="clave-nueva-texto"></code>
+      <p class="sub">Pásasela por un canal privado. Tendrá que escribirla en Ajustes, en su móvil. Por seguridad no se volverá a mostrar aquí; si la pierdes, crea otra.</p>
+      <div class="botones"><button type="button" id="b-copiar">Copiar clave</button></div>
+    </div>
+    <div class="botones">
+      <button type="button" id="b-nueva-clave">Crear clave</button>
+      <button type="button" class="peligro" id="b-quitar-clave" hidden>Quitar acceso</button>
+    </div>
+    <div class="campo">
+      <span style="font-weight:700;font-size:14px">Qué puede hacer en cada sección</span>
+      <ul class="lista" id="lista-permisos"></ul>
+    </div>
+    <div class="botones">
+      <button type="button" class="principal" id="b-guardar-permisos">Guardar permisos</button>
+    </div>
+    <p class="sub">Los permisos se aplican a las secciones a medida que pasan al script Casa. Las que aún no se han migrado siguen con su sistema de antes.</p>
+  </section>
+
+  <!-- Seguridad (solo administrador) -->
+  <section id="sec-seguridad" aria-labelledby="t-seguridad" hidden>
+    <header>
+      <span class="ambito">Script Casa · solo tú</span>
+      <h2 id="t-seguridad">Seguridad</h2>
+      <p class="sub">Últimos intentos de entrar con una clave incorrecta (se guardan los 50 más recientes).</p>
+    </header>
+    <label class="interruptor"><input type="checkbox" id="i-aviso"> <span id="t-aviso">Avisarme por correo</span></label>
+    <ul class="lista registro" id="lista-registro"></ul>
+    <div class="botones"><button type="button" id="b-borrar-registro">Borrar registro</button></div>
+  </section>
+
+  <!-- Secciones -->
+  <section aria-labelledby="t-secciones">
+    <header>
+      <h2 id="t-secciones">Ajustes de cada sección</h2>
+      <p class="sub">Cada sección mantiene sus propios ajustes (categorías, perfiles, recetas…) dentro de su web.</p>
+    </header>
+    <ul class="lista enlaces" id="lista-enlaces"></ul>
+  </section>
+</main>
+
+<script src="ajustes.js"></script>
+</body>
+</html>

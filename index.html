@@ -10,55 +10,41 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="comun/estilo.css">
+<script src="comun/casa.js"></script>
 <style>
 :root {
-  --bg: #FAFAF7; --fg: #23262B; --muted: #6B7078;
-  --f1: #CFE3CF; --f2: #F8CFC6; --f3: #C9DAEA; --f4: #DCD3F0; --f5: #F3E3B5; --f6: #C6E6E2;
-  --r1: #4E7A52; --r2: #B9533F; --r3: #3E6489; --r4: #6E5AA8; --r5: #8A6A12; --r6: #2F7A73;
-  --font: "Nunito", "Segoe UI", system-ui, sans-serif;
   /* Tamaño de cada círculo: cabe en 2 columnas y 3 filas en una pantalla de móvil */
   --size: min(36vw, 150px, 16svh);
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #17191C; --fg: #ECEDEF; --muted: #9CA1A8;
-    --f1: #2F4632; --f2: #4E2F29; --f3: #283B4F; --f4: #3A3354; --f5: #4A3F22; --f6: #24413E;
-    --r1: #9FCDA3; --r2: #F2A593; --r3: #9DC0E3; --r4: #C2B4EE; --r5: #E8CF85; --r6: #92D3CB;
-    color-scheme: dark;
-  }
 }
 @supports not (height: 1svh) {
   :root { --size: min(36vw, 150px, 16vh); }
 }
 
-* { box-sizing: border-box; }
-
 body {
-  margin: 0; min-height: 100vh;
-  background: var(--bg); color: var(--fg); font-family: var(--font);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: max(28px, env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-bottom, 0px));
 }
 
-main { max-width: 520px; margin: 0 auto; display: grid; gap: clamp(20px, 3.5svh, 32px); }
+main { max-width: 520px; margin: 0 auto; display: grid; gap: clamp(20px, 3.5svh, 32px); position: relative; }
 
 header { text-align: center; display: grid; gap: 4px; }
 .saludo { font-size: 15px; color: var(--muted); letter-spacing: .02em; }
 h1 { margin: 0; font-weight: 800; font-size: clamp(36px, 8vw, 52px); line-height: 1; letter-spacing: -.01em; }
+
+.ajustes {
+  position: absolute; top: 0; right: 0;
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%;
+  font-size: 20px; text-decoration: none; color: var(--fg);
+  border: 1.5px solid var(--line); background: var(--card);
+  transition: transform .3s ease;
+}
+.ajustes:hover, .ajustes:focus-visible { transform: rotate(45deg); outline: none; border-color: var(--muted); }
 
 .grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(14px, 2.5svh, 28px) clamp(16px, 5vw, 40px);
   list-style: none; margin: 0; padding: 0;
 }
-.grid li:nth-child(1) { --f: var(--f1); --r: var(--r1); }
-.grid li:nth-child(2) { --f: var(--f2); --r: var(--r2); }
-.grid li:nth-child(3) { --f: var(--f3); --r: var(--r3); }
-.grid li:nth-child(4) { --f: var(--f4); --r: var(--r4); }
-.grid li:nth-child(5) { --f: var(--f5); --r: var(--r5); }
-.grid li:nth-child(6) { --f: var(--f6); --r: var(--r6); }
 
 .item {
   display: grid; justify-items: center; gap: 10px;
@@ -82,56 +68,77 @@ a.item:focus-visible .circle {
 }
 a.item:focus-visible .name { text-decoration: underline; text-underline-offset: 4px; }
 
-footer { text-align: center; font-size: 13px; color: var(--muted); }
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+/* Sin permiso: apagado y con candado */
+.bloqueado { cursor: default; }
+.bloqueado .circle { opacity: .45; filter: grayscale(.7); }
+.bloqueado .name { opacity: .6; }
+.candado {
+  position: absolute; right: 4%; bottom: 4%;
+  display: grid; place-items: center; width: 32%; aspect-ratio: 1; border-radius: 50%;
+  background: var(--card); border: 2px solid var(--line); font-size: 45%;
 }
+.solo-ver {
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--r); border: 1.5px solid var(--r); border-radius: 999px; padding: 2px 8px; margin-top: -4px;
+}
+
+footer { text-align: center; font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
   <main>
+    <a class="ajustes" href="ajustes/" aria-label="Ajustes" title="Ajustes">⚙️</a>
     <header>
       <span class="saludo" id="saludo">Hola</span>
       <h1>Casa</h1>
     </header>
 
-    <ul class="grid">
-      <li><a class="item" href="https://katwolo.github.io/si_chef/">
-        <span class="circle" aria-hidden="true">🍲</span>
-        <span class="name">Planificación de comidas</span>
-      </a></li>
-      <li><a class="item" href="https://katwolo.github.io/MediHome/">
-        <span class="circle" aria-hidden="true">💊</span>
-        <span class="name">Botiquín</span>
-      </a></li>
-      <li><a class="item" href="https://katwolo.github.io/garatge/">
-        <span class="circle" aria-hidden="true">🔧</span>
-        <span class="name">Garaje</span>
-      </a></li>
-      <li><a class="item" href="https://katwolo.github.io/registro-peso/">
-        <span class="circle" aria-hidden="true">⚖️</span>
-        <span class="name">Registro de pesos</span>
-      </a></li>
-      <li><a class="item" href="https://katwolo.github.io/economia/">
-        <span class="circle" aria-hidden="true">💶</span>
-        <span class="name">Economía</span>
-      </a></li>
-      <li><a class="item" href="https://katwolo.github.io/diario/#/crear">
-        <span class="circle" aria-hidden="true">📝</span>
-        <span class="name">Notes</span>
-      </a></li>
-    </ul>
+    <ul class="grid" id="grid"></ul>
 
     <footer id="fecha"></footer>
   </main>
 
 <script>
+  const prefs = Casa.preferencias();
+
   const h = new Date().getHours();
-  document.getElementById('saludo').textContent =
-    h < 6 ? 'Buenas noches' : h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+  const saludo = h < 6 ? 'Buenas noches' : h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+  document.getElementById('saludo').textContent = prefs.nombre ? saludo + ', ' + prefs.nombre : saludo;
   const f = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('fecha').textContent = f.charAt(0).toUpperCase() + f.slice(1);
+
+  const grid = document.getElementById('grid');
+  prefs.orden.forEach(function (id) {
+    if (prefs.ocultas.indexOf(id) >= 0) return;
+    const s = Casa.SECCIONES.find(function (x) { return x.id === id; });
+    const permiso = Casa.permiso(id); // null si este dispositivo no está conectado
+    const li = document.createElement('li');
+    li.className = 's-' + s.id;
+    let el;
+    if (permiso === 'ninguno') {
+      el = document.createElement('div');
+      el.className = 'item bloqueado';
+      el.setAttribute('aria-label', s.nombre + ', sin acceso');
+      el.innerHTML = '<span class="circle" aria-hidden="true">' + s.emoji + '<span class="candado">🔒</span></span>';
+    } else {
+      el = document.createElement('a');
+      el.className = 'item';
+      el.href = s.href;
+      el.innerHTML = '<span class="circle" aria-hidden="true">' + s.emoji + '</span>';
+    }
+    const nombre = document.createElement('span');
+    nombre.className = 'name';
+    nombre.textContent = s.nombre;
+    el.appendChild(nombre);
+    if (permiso === 'ver') {
+      const b = document.createElement('span');
+      b.className = 'solo-ver';
+      b.textContent = 'Solo ver';
+      el.appendChild(b);
+    }
+    li.appendChild(el);
+    grid.appendChild(li);
+  });
 </script>
 </body>
 </html>

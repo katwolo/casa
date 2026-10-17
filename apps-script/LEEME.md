@@ -1,0 +1,42 @@
+# Script Casa
+
+Un único proyecto de Apps Script para todas las secciones de Casa. Controla quién entra (tú o tu pareja) y qué puede hacer cada uno en cada sección. Las secciones se irán migrando a este script una a una; mientras tanto, cada web sigue usando su script de siempre.
+
+## Archivos
+
+| Archivo | Qué hace |
+|---|---|
+| `Codigo.gs` | Recibe las peticiones y las envía a la sección correspondiente. |
+| `acceso.gs` | Claves, permisos de la pareja y registro de intentos fallidos. |
+| `appsscript.json` | Configuración del proyecto (zona horaria y publicación como app web). |
+
+## Instalación (una sola vez)
+
+1. Entra en <https://script.google.com> y crea un **proyecto nuevo**. Llámalo `Casa`.
+2. Copia el contenido de `Codigo.gs` en el archivo `Código.gs` del proyecto.
+3. Crea un archivo nuevo de script (`+` → Secuencia de comandos) llamado `acceso` y pega `acceso.gs`.
+4. En **Configuración del proyecto** (⚙️), activa *Mostrar el archivo de manifiesto "appsscript.json"*, vuelve al editor y sustituye su contenido por el de `appsscript.json`.
+5. En **Configuración del proyecto → Propiedades del script**, añade:
+   - `CLAVE_ADMIN` = tu clave. Usa una larga que no uses en ningún otro sitio.
+6. **Implementar → Nueva implementación → Aplicación web**:
+   - Ejecutar como: **Yo**
+   - Quién tiene acceso: **Cualquier usuario**
+   
+   Autoriza los permisos que te pida (enviar correos para los avisos) y copia la URL que acaba en `/exec`.
+7. Abre **Casa → ⚙️ Ajustes**, pega la URL y tu clave, y pulsa **Conectar**.
+
+Si quieres no tener que pegar la URL en cada dispositivo, ponla también en `comun/casa.js`, en `URL_POR_DEFECTO`.
+
+## Propiedades del script
+
+| Propiedad | Quién la pone | Para qué |
+|---|---|---|
+| `CLAVE_ADMIN` | Tú, a mano | Tu clave. Acceso total. |
+| `CLAVE_PAREJA` | Ajustes | Clave de tu pareja. Se crea, cambia o quita desde Ajustes. |
+| `PERMISOS_PAREJA` | Ajustes | Ninguno / ver / editar en cada sección. |
+| `AVISO_EMAIL` | Ajustes | `si` para recibir un correo si alguien usa una clave incorrecta (como mucho uno por hora). |
+| `REGISTRO_FALLOS` | El script | Los últimos 50 intentos con clave incorrecta. |
+
+## Al actualizar el código
+
+Pega los archivos nuevos y haz **Implementar → Gestionar implementaciones → ✏️ → Versión: Nueva versión**. Así la URL no cambia. Las claves y los permisos no se tocan, porque están en las propiedades.
