@@ -53,3 +53,7 @@ Pega los archivos nuevos y haz **Implementar → Gestionar implementaciones → 
 | Botiquín | `botiquin.gs` | `BOTIQUIN_SPREADSHEET_ID` | Usa la misma hoja que la web original MediHome (pestañas Medicaments, Tractaments y Dosis). |
 
 Para añadir una sección: crea su archivo `.gs` en el proyecto, añade su propiedad con el ID de la hoja y publica una **nueva versión**. La primera vez que una sección use un servicio nuevo de Google (Sheets, Drive…), el editor te pedirá autorizarlo.
+
+## Al cambiar los archivos de la web
+
+Los navegadores guardan una copia de `comun/casa.js`, `comun/estilo.css` y `ajustes/ajustes.js` durante un rato. Por eso las páginas los cargan con un número de versión (`casa.js?v=4`). Cada vez que cambie alguno de esos archivos, se sube ese número en todas las páginas, para que el navegador descargue la versión nueva.
