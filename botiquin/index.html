@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediHome</title>
+<style>
+:root {
+  --primary: #2563EB;
+  --primary-light: #EFF6FF;
+  --primary-dark: #1D4ED8;
+  --success: #10B981;
+  --success-light: #ECFDF5;
+  --warning: #F59E0B;
+  --warning-light: #FFFBEB;
+  --danger: #EF4444;
+  --danger-light: #FEF2F2;
+  --gray-50: #F8FAFC;
+  --gray-100: #F1F5F9;
+  --gray-200: #E2E8F0;
+  --gray-300: #CBD5E1;
+  --gray-400: #94A3B8;
+  --gray-500: #64748B;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1E293B;
+  --gray-900: #0F172A;
+  --white: #FFFFFF;
+  --nav-h: 72px;
+  --hdr-h: 60px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;background:#f5f7fa;color:var(--gray-800);min-height:100vh;-webkit-font-smoothing:antialiased}
+#app{max-width:500px;margin:0 auto;min-height:100vh;background:#f5f7fa;position:relative}
+
+/* HEADER */
+.hdr{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;height:var(--hdr-h);background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;z-index:100}
+.hdr-logo{display:flex;align-items:center;gap:.5rem}
+.hdr-logo .ico{width:34px;height:34px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+.hdr-logo .txt{font-size:1.125rem;font-weight:700;color:var(--gray-900);letter-spacing:-.02em}
+.hdr-logo .txt span{color:var(--primary)}
+.hdr-btn{width:44px;height:44px;border-radius:50%;background:var(--gray-100);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.125rem;color:var(--gray-600)}
+
+/* MAIN */
+.main{padding-top:var(--hdr-h);padding-bottom:calc(var(--nav-h) + .5rem);min-height:100vh}
+
+/* SECTION */
+.sec{display:none;padding:1.25rem;animation:fadeIn .18s ease}
+.sec.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;height:var(--nav-h);background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-top:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-around;padding:0 .25rem;z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;padding:.5rem 0;min-height:44px;cursor:pointer;border:none;background:none;color:var(--gray-400);position:relative;transition:color .15s}
+.ni.active{color:var(--primary)}
+.ni.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:3px;background:var(--primary);border-radius:0 0 4px 4px}
+.ni-ico{font-size:1.375rem;line-height:1}
+.ni-lbl{font-size:.6875rem;font-weight:500}
+.ni-badge{position:absolute;top:4px;right:calc(50% - 18px);width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;font-size:.5625rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* SECTION HEADER */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.sh-ttl{font-size:1.5rem;font-weight:700;color:var(--gray-900);letter-spacing:-.03em}
+.sh-sub{font-size:.8125rem;color:var(--gray-500);margin-top:.125rem}
+.sec-div{font-size:.6875rem;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.1em;margin:1.375rem 0 .625rem;display:flex;align-items:center;gap:.625rem}
+.sec-div::after{content:'';flex:1;height:1px;background:var(--gray-200)}
+
+/* CARDS */
+.card{background:var(--white);border-radius:14px;padding:1.125rem;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1px solid var(--gray-200)}
+.card+.card{margin-top:.75rem}
+
+/* STAT GRID */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.stat-card{background:var(--white);border-radius:14px;padding:1rem;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1px solid var(--gray-200);border-top-width:3px}
+.stat-ico{font-size:1.375rem;margin-bottom:.375rem}
+.stat-val{font-size:1.875rem;font-weight:700;letter-spacing:-.04em;color:var(--gray-900);line-height:1}
+.stat-lbl{font-size:.75rem;color:var(--gray-500);margin-top:.2rem}
+.stat-card.primary{border-top-color:var(--primary)}.stat-card.primary .stat-val{color:var(--primary)}
+.stat-card.success{border-top-color:var(--success)}.stat-card.success .stat-val{color:var(--success)}
+.stat-card.warning{border-top-color:var(--warning)}.stat-card.warning .stat-val{color:var(--warning)}
+.stat-card.danger{border-top-color:var(--danger)}.stat-card.danger .stat-val{color:var(--danger)}
+
+/* ALERT ITEMS */
+.al-list{display:flex;flex-direction:column;gap:.5rem}
+.al-item{display:flex;align-items:center;gap:.75rem;padding:.8rem 1rem;background:var(--white);border-radius:12px;border:1px solid var(--gray-200);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.al-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.al-item.warning .al-dot{background:var(--warning)}
+.al-item.danger .al-dot{background:var(--danger)}
+.al-item.info .al-dot{background:var(--primary)}
+.al-item.success .al-dot{background:var(--success)}
+.al-body{flex:1;min-width:0}
+.al-ttl{font-size:.875rem;font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.al-desc{font-size:.75rem;color:var(--gray-500);margin-top:.1rem}
+.al-badge{font-size:.6875rem;font-weight:600;padding:.2rem .5rem;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.al-item.warning .al-badge{background:var(--warning-light);color:#92400E}
+.al-item.danger .al-badge{background:var(--danger-light);color:#991B1B}
+.al-item.info .al-badge{background:var(--primary-light);color:var(--primary-dark)}
+.al-item.success .al-badge{background:var(--success-light);color:#065F46}
+
+/* MEDICINE CARDS */
+.med-card{background:var(--white);border-radius:16px;padding:1.125rem 1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.06)}
+.med-card+.med-card{margin-top:.75rem}
+.med-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.med-name{font-size:1.0625rem;font-weight:700;color:var(--gray-900);letter-spacing:-.02em;line-height:1.3}
+.med-tags{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.45rem}
+.med-tag{display:inline-flex;align-items:center;font-size:.6875rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;background:var(--gray-100);color:var(--gray-600)}
+.med-tag-blue{background:#EFF6FF;color:#1D4ED8}
+.med-tag-green{background:#ECFDF5;color:#065F46}
+.med-meta{display:flex;align-items:center;gap:.4rem;margin-top:.75rem;flex-wrap:wrap}
+.med-actions{display:flex;gap:.5rem;margin-top:.875rem;padding-top:.875rem;border-top:1px solid #f5f7fa;flex-wrap:wrap}
+
+/* CHIPS */
+.chip{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:500;padding:.275rem .65rem;border-radius:20px}
+.c-stock{background:var(--gray-100);color:var(--gray-600)}
+.c-stock.low{background:var(--warning-light);color:#92400E}
+.c-stock.empty{background:var(--danger-light);color:#991B1B}
+.c-expiry{background:var(--primary-light);color:var(--primary-dark)}
+.c-expiry.soon{background:var(--warning-light);color:#92400E}
+.c-expiry.expired{background:var(--danger-light);color:#991B1B}
+.c-loc{background:var(--gray-100);color:var(--gray-500)}
+.c-sigre{background:#FEF3C7;color:#92400E}
+.c-active{background:var(--success-light);color:var(--success)}
+
+/* PROGRESS */
+.prog{height:5px;background:var(--gray-200);border-radius:3px;overflow:hidden;margin-top:.5rem}
+.prog-fill{height:100%;border-radius:3px;background:var(--primary);transition:width .3s}
+.prog-fill.low{background:var(--warning)}
+.prog-fill.empty{background:var(--danger)}
+
+/* SEARCH */
+.search{position:relative;margin-bottom:.875rem}
+.search input{width:100%;height:50px;padding:0 1rem 0 2.75rem;background:var(--white);border:1.5px solid var(--gray-200);border-radius:25px;font-size:.9375rem;color:var(--gray-800);outline:none;transition:border-color .15s;font-family:inherit}
+.search input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.search input::placeholder{color:var(--gray-400)}
+.search-ico{position:absolute;left:.8rem;top:50%;transform:translateY(-50%);font-size:1rem;color:var(--gray-400);pointer-events:none}
+
+/* FILTER PILLS */
+.pills{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;padding-bottom:.25rem;margin-bottom:.875rem}
+.pills::-webkit-scrollbar{display:none}
+.pill{display:inline-flex;align-items:center;padding:.325rem .75rem;border-radius:20px;font-size:.8125rem;font-weight:500;white-space:nowrap;cursor:pointer;border:1.5px solid var(--gray-200);background:var(--white);color:var(--gray-600);transition:all .12s}
+.pill.active{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.325rem;height:44px;padding:0 1.125rem;border-radius:12px;font-size:.9375rem;font-weight:600;cursor:pointer;border:none;transition:opacity .12s,transform .08s;white-space:nowrap;font-family:inherit}
+.btn:active{opacity:.82;transform:scale(.98)}
+.btn-p{background:var(--primary);color:#fff}
+.btn-s{background:var(--gray-100);color:var(--gray-700)}
+.btn-d{background:var(--danger-light);color:var(--danger)}
+.btn-w{background:var(--warning-light);color:#92400E}
+.btn-g{background:var(--success-light);color:var(--success)}
+.btn-o{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-sm{height:36px;padding:0 .75rem;font-size:.8125rem;border-radius:9px}
+.btn-full{width:100%}
+
+/* FAB */
+.fab{position:fixed;bottom:calc(var(--nav-h) + 1rem);right:calc(50% - 234px);width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;font-size:1.625rem;display:none;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(37,99,235,.38);cursor:pointer;border:none;z-index:90;transition:transform .12s,box-shadow .12s;line-height:1}
+.fab:active{transform:scale(.92)}
+@media(max-width:500px){.fab{right:1rem}}
+
+/* TREATMENT CARDS */
+.treat-card{background:var(--white);border-radius:14px;padding:1rem 1.125rem;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1px solid var(--gray-200)}
+.treat-card+.treat-card{margin-top:.625rem}
+.treat-hdr{display:flex;align-items:flex-start;justify-content:space-between}
+.treat-name{font-size:1rem;font-weight:600;color:var(--gray-900)}
+.treat-med{font-size:.8125rem;color:var(--primary);margin-top:.125rem;font-weight:500}
+.treat-meta{display:flex;gap:.4rem;margin-top:.625rem;flex-wrap:wrap}
+.treat-actions{display:flex;gap:.4rem;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--gray-100);flex-wrap:wrap}
+
+/* TOGGLE */
+.tgl{position:relative;display:inline-flex;align-items:center;gap:.5rem;cursor:pointer}
+.tgl input{position:absolute;opacity:0;width:0;height:0}
+.tgl-track{width:42px;height:24px;background:var(--gray-300);border-radius:12px;position:relative;transition:background .18s;flex-shrink:0}
+.tgl-track::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.tgl input:checked+.tgl-track{background:var(--primary)}
+.tgl input:checked+.tgl-track::after{transform:translateX(18px)}
+.tgl-lbl{font-size:.875rem;font-weight:500;color:var(--gray-700)}
+
+/* DOSE LOG */
+.dose-item{display:flex;align-items:center;gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--gray-100)}
+.dose-item:last-child{border-bottom:none}
+.dose-dot{width:7px;height:7px;border-radius:50%;background:var(--success);flex-shrink:0}
+.dose-info{flex:1;min-width:0}
+.dose-med{font-size:.875rem;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dose-time{font-size:.75rem;color:var(--gray-400)}
+.dose-qty{font-size:.8125rem;font-weight:600;color:var(--gray-500);flex-shrink:0}
+
+/* SIGRE */
+.sigre-banner{background:linear-gradient(135deg,#22C55E,#15803D);border-radius:14px;padding:1.125rem;color:#fff;margin-bottom:1.25rem}
+.sigre-banner h3{font-size:1rem;font-weight:700;margin-bottom:.25rem}
+.sigre-banner p{font-size:.8125rem;opacity:.9;line-height:1.5}
+
+/* SETTINGS */
+.set-grp{margin-bottom:1.5rem}
+.set-grp-ttl{font-size:.75rem;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+.set-item{display:flex;align-items:center;gap:.75rem;padding:.8rem 1rem;background:var(--white);border-radius:12px;cursor:pointer;border:1px solid var(--gray-200)}
+.set-item+.set-item{margin-top:.5rem}
+.set-item:active{background:var(--gray-50)}
+.set-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.125rem;flex-shrink:0}
+.set-body{flex:1}
+.set-ttl{font-size:.9375rem;font-weight:600;color:var(--gray-800)}
+.set-desc{font-size:.75rem;color:var(--gray-400);margin-top:.1rem}
+.set-arr{color:var(--gray-300);font-size:.875rem}
+
+/* EMPTY STATE */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 1.5rem;text-align:center}
+.empty-ico{font-size:3rem;margin-bottom:.875rem;opacity:.35}
+.empty-ttl{font-size:1rem;font-weight:600;color:var(--gray-700);margin-bottom:.375rem}
+.empty-desc{font-size:.875rem;color:var(--gray-400);line-height:1.5}
+
+/* MODALS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:200;backdrop-filter:blur(3px)}
+.overlay.active{display:flex;align-items:flex-end;justify-content:center}
+.overlay.center{align-items:center}
+.modal{width:100%;max-width:500px;background:var(--white);border-radius:20px 20px 0 0;padding:0 1.25rem 2rem;max-height:92vh;overflow-y:auto;animation:slideUp .22s cubic-bezier(.32,.72,0,1)}
+.overlay.center .modal{border-radius:20px;max-width:340px;margin:1.25rem;padding:1.5rem;max-height:90vh}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--gray-200);border-radius:2px;margin:.75rem auto 1.375rem}
+.modal-ttl{font-size:1.25rem;font-weight:700;color:var(--gray-900);margin-bottom:1.375rem;letter-spacing:-.02em}
+.modal-actions{display:flex;gap:.625rem;margin-top:1.375rem}
+.modal-actions .btn{flex:1}
+
+/* FORMS */
+.fg{margin-bottom:.875rem}
+.fg label{display:block;font-size:.8125rem;font-weight:600;color:var(--gray-700);margin-bottom:.325rem}
+.fc{width:100%;height:46px;padding:0 .875rem;background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:11px;font-size:.9375rem;color:var(--gray-800);outline:none;transition:all .15s;font-family:inherit;appearance:none}
+.fc:focus{border-color:var(--primary);background:var(--white);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.fc::placeholder{color:var(--gray-400)}
+textarea.fc{height:auto;min-height:76px;padding:.75rem .875rem;resize:none}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:.625rem}
+.f-hint{font-size:.75rem;color:var(--gray-400);margin-top:.25rem}
+
+/* REPORT */
+.report-box{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:11px;padding:1rem;font-family:monospace;font-size:.8125rem;color:var(--gray-700);line-height:1.65;white-space:pre-wrap;word-break:break-all;max-height:55vh;overflow-y:auto}
+
+/* TOAST */
+#toasts{position:fixed;top:calc(var(--hdr-h) + .75rem);left:50%;transform:translateX(-50%);width:calc(100% - 2rem);max-width:460px;z-index:300;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast{display:flex;align-items:center;gap:.625rem;padding:.8rem 1rem;background:var(--gray-900);color:#fff;border-radius:12px;font-size:.875rem;font-weight:500;box-shadow:0 6px 20px rgba(0,0,0,.2);animation:tIn .18s ease;pointer-events:auto}
+.toast.ok{background:#065F46}
+.toast.err{background:#991B1B}
+.toast.warn{background:#92400E}
+@keyframes tIn{from{opacity:0;transform:translateY(-6px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* UTILS */
+.mt2{margin-top:.5rem}
+.mt3{margin-top:.75rem}
+.danger-txt{color:var(--danger)}
+</style>
+<script src="../comun/casa.js?v=9"></script>
+<style>
+/* Casa: aviso de acceso y modo solo lectura */
+.casa-aviso{margin:0 0 1rem;padding:.75rem 1rem;border-radius:12px;font-size:.875rem;line-height:1.45;background:#F1F5F9;color:#334155;text-align:center}
+.casa-aviso a{color:inherit;font-weight:700}
+body.solo-ver #fab,
+body.solo-ver #s-import,
+body.solo-ver #s-clear,
+body.solo-ver [onclick^="App.openMedModal"],
+body.solo-ver [onclick^="App.openTreatModal"],
+body.solo-ver [onclick^="App.openDoseModal"],
+body.solo-ver [onclick^="App.toggleSIGRE"],
+body.solo-ver [onclick^="App.delivered"],
+body.solo-ver [onclick^="App.delConfirm"]{display:none!important}
+body.solo-ver .tgl{pointer-events:none;opacity:.6}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header class="hdr">
+  <div class="hdr-logo">
+    <div class="ico">💊</div>
+    <div class="txt">Medi<span>Home</span></div>
+  </div>
+  <button class="hdr-btn" id="hdr-btn" title="Inicio">🔔</button>
+</header>
+
+<main class="main">
+
+  <!-- INICIO -->
+  <section class="sec active" id="s-inicio">
+    <div class="sh">
+      <div>
+        <div class="sh-ttl" id="dash-greeting">Resumen</div>
+        <div class="sh-sub" id="dash-date"></div>
+      </div>
+    </div>
+    <div class="stat-grid" id="stat-grid"></div>
+    <div class="sec-div">Alertas activas</div>
+    <div id="alerts-list" class="al-list"></div>
+    <div class="sec-div">Últimas dosis</div>
+    <div class="card" id="recent-doses"></div>
+  </section>
+
+  <!-- BOTIQUÍN -->
+  <section class="sec" id="s-botiquin">
+    <div class="sh">
+      <div>
+        <div class="sh-ttl">Botiquín</div>
+        <div class="sh-sub" id="inv-count"></div>
+      </div>
+    </div>
+    <div class="search">
+      <span class="search-ico">🔍</span>
+      <input type="text" id="search" placeholder="Buscar por nombre o principio activo…">
+    </div>
+    <div class="pills" id="pills">
+      <button class="pill active" data-f="all">Todos</button>
+      <button class="pill" data-f="low">Stock bajo</button>
+      <button class="pill" data-f="expiring">Caducan pronto</button>
+      <button class="pill" data-f="expired">Caducados</button>
+      <button class="pill" data-f="sigre">Para SIGRE</button>
+    </div>
+    <div id="med-list"></div>
+  </section>
+
+  <!-- TRATAMIENTOS -->
+  <section class="sec" id="s-tratamientos">
+    <div class="sh">
+      <div>
+        <div class="sh-ttl">Tratamientos</div>
+        <div class="sh-sub" id="treat-count"></div>
+      </div>
+    </div>
+    <div id="treat-list"></div>
+  </section>
+
+  <!-- SIGRE -->
+  <section class="sec" id="s-sigre">
+    <div class="sh">
+      <div>
+        <div class="sh-ttl">Punto SIGRE</div>
+        <div class="sh-sub">Medicamentos para desechar</div>
+      </div>
+    </div>
+    <div class="sigre-banner">
+      <h3>♻️ Reciclaje seguro</h3>
+      <p>Entrega los medicamentos marcados en tu farmacia más cercana. No los tires a la basura ni por el desagüe.</p>
+    </div>
+    <div id="sigre-list"></div>
+    <div id="sigre-report-btn" style="margin-top:1.25rem"></div>
+  </section>
+
+  <!-- CONFIGURACIÓN -->
+  <section class="sec" id="s-config">
+    <div class="sh"><div><div class="sh-ttl">Configuración</div></div></div>
+
+    <div class="set-grp">
+      <div class="set-grp-ttl">Datos</div>
+      <div class="set-item" id="s-export-json">
+        <div class="set-ico" style="background:var(--primary-light)">📤</div>
+        <div class="set-body"><div class="set-ttl">Exportar JSON</div><div class="set-desc">Backup completo de todos los datos</div></div>
+        <span class="set-arr">›</span>
+      </div>
+      <div class="set-item" id="s-export-csv">
+        <div class="set-ico" style="background:var(--success-light)">📊</div>
+        <div class="set-body"><div class="set-ttl">Exportar CSV</div><div class="set-desc">Inventario en formato hoja de cálculo</div></div>
+        <span class="set-arr">›</span>
+      </div>
+      <div class="set-item" id="s-import">
+        <div class="set-ico" style="background:var(--warning-light)">📥</div>
+        <div class="set-body"><div class="set-ttl">Importar datos</div><div class="set-desc">Carga medicamentos desde CSV o JSON</div></div>
+        <span class="set-arr">›</span>
+      </div>
+
+    </div>
+
+    <div class="set-grp">
+      <div class="set-grp-ttl">Sincronización</div>
+      <div class="set-item" id="s-gsheets">
+        <div class="set-ico" style="background:#FEF9C3">🔗</div>
+        <div class="set-body"><div class="set-ttl">Conexión con Casa</div><div class="set-desc" id="gsheets-status">Este dispositivo no está conectado</div></div>
+        <span class="set-arr">›</span>
+      </div>
+      <div class="set-item" id="s-sync" style="display:none">
+        <div class="set-ico" style="background:var(--primary-light)">☁️</div>
+        <div class="set-body"><div class="set-ttl">Sincronizar ahora</div><div class="set-desc">Descargar datos desde Google Sheets</div></div>
+        <span class="set-arr">›</span>
+      </div>
+    </div>
+
+    <div class="set-grp">
+      <div class="set-grp-ttl">Peligro</div>
+      <div class="set-item" id="s-clear" style="border-color:#FEE2E2">
+        <div class="set-ico" style="background:var(--danger-light)">🗑️</div>
+        <div class="set-body"><div class="set-ttl danger-txt">Borrar todos los datos</div><div class="set-desc">Esta acción no se puede deshacer</div></div>
+        <span class="set-arr danger-txt">›</span>
+      </div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:.875rem">
+      <div style="font-size:.8125rem;color:var(--gray-500)">MediHome v1.0.0 · Gestión personal de medicamentos</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="bnav">
+  <button class="ni active" data-s="inicio"><span class="ni-ico">🏠</span><span class="ni-lbl">Inicio</span></button>
+  <button class="ni" data-s="botiquin"><span class="ni-ico">💊</span><span class="ni-lbl">Botiquín</span></button>
+  <button class="ni" data-s="tratamientos"><span class="ni-ico">📋</span><span class="ni-lbl">Tratamientos</span></button>
+  <button class="ni" data-s="sigre"><span class="ni-ico">♻️</span><span class="ni-lbl">SIGRE</span><span class="ni-badge" id="sigre-badge" style="display:none">0</span></button>
+  <button class="ni" data-s="config"><span class="ni-ico">⚙️</span><span class="ni-lbl">Config</span></button>
+</nav>
+
+<button class="fab" id="fab">+</button>
+
+<!-- ====== MODALS ====== -->
+
+<!-- Medicine -->
+<div class="overlay" id="m-med">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl" id="m-med-ttl">Nuevo medicamento</div>
+    <div class="fg"><label>Nombre *</label><input class="fc" id="mm-name" type="text" placeholder="Ej: Paracetamol 500mg"></div>
+    <div class="fg"><label>Principio activo</label><input class="fc" id="mm-lab" type="text" placeholder="Ej: Ibuprofeno"></div>
+    <div class="f-row">
+      <div class="fg"><label>Cantidad *</label><input class="fc" id="mm-qty" type="number" min="0" step="0.5" placeholder="20"></div>
+      <div class="fg"><label>Unidad</label>
+        <select class="fc" id="mm-unit">
+          <option value="comprimidos">Comprimidos</option>
+          <option value="cápsulas">Cápsulas</option>
+          <option value="sobres">Sobres</option>
+          <option value="ml">ml</option>
+          <option value="gotas">Gotas</option>
+          <option value="ampollas">Ampollas</option>
+          <option value="parches">Parches</option>
+          <option value="unidades">Unidades</option>
+        </select>
+      </div>
+    </div>
+    <div class="f-row">
+      <div class="fg"><label>Stock mínimo</label><input class="fc" id="mm-min" type="number" min="0" placeholder="5"></div>
+      <div class="fg"><label>Caducidad</label><input class="fc" id="mm-exp" type="month"></div>
+    </div>
+    <div class="fg"><label>Ubicación</label><input class="fc" id="mm-loc" type="text" placeholder="Botiquín principal"></div>
+    <div class="fg"><label>Categoría</label>
+      <select class="fc" id="mm-cat">
+        <option value="">Seleccionar…</option>
+        <option value="adultos">Adultos</option>
+        <option value="niños">Niños</option>
+        <option value="animales">Animales</option>
+      </select>
+    </div>
+    <div class="fg" id="mm-pet-row" style="display:none"><label>Mascota</label>
+      <select class="fc" id="mm-pet">
+        <option value="">Seleccionar…</option>
+        <option value="perro">Perro</option>
+        <option value="gato">Gato</option>
+        <option value="ambos">Ambos</option>
+      </select>
+    </div>
+    <div class="fg"><label>Uso</label>
+      <select class="fc" id="mm-uso">
+        <option value="">Seleccionar…</option>
+        <option value="analgésico">Analgésico</option>
+        <option value="antibiótico">Antibiótico</option>
+        <option value="antialérgico">Antialérgico</option>
+        <option value="antiinflamatorio">Antiinflamatorio</option>
+        <option value="antihipertensivo">Antihipertensivo</option>
+        <option value="digestivo">Digestivo</option>
+        <option value="vitaminas">Vitaminas / Suplementos</option>
+        <option value="dermatológico">Dermatológico</option>
+        <option value="respiratorio">Respiratorio</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notas</label><textarea class="fc" id="mm-notes" placeholder="Instrucciones, observaciones…"></textarea></div>
+    <div class="fg">
+      <label class="tgl"><input type="checkbox" id="mm-sigre"><span class="tgl-track"></span><span class="tgl-lbl">Marcar para SIGRE</span></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="mm-cancel">Cancelar</button>
+      <button class="btn btn-p" id="mm-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Treatment -->
+<div class="overlay" id="m-treat">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl" id="m-treat-ttl">Nuevo tratamiento</div>
+    <div class="fg"><label>Nombre *</label><input class="fc" id="mt-name" type="text" placeholder="Ej: Tensión arterial"></div>
+    <div class="fg">
+      <label>Medicamento *</label>
+      <div class="search" style="margin-bottom:.5rem;position:relative">
+        <span class="search-ico">🔍</span>
+        <input class="fc" type="text" id="mt-med-search" placeholder="Buscar medicamento…" autocomplete="off" style="padding-left:2.5rem">
+      </div>
+      <select class="fc" id="mt-med"><option value="">Seleccionar medicamento…</option></select>
+    </div>
+    <div class="f-row">
+      <div class="fg"><label>Dosis por toma</label><input class="fc" id="mt-dqty" type="number" min="0.5" step="0.5" value="1"></div>
+      <div class="fg"><label>Frecuencia</label>
+        <select class="fc" id="mt-freq">
+          <option value="once">1× al día</option>
+          <option value="twice">2× al día</option>
+          <option value="three">3× al día</option>
+          <option value="four">4× al día</option>
+          <option value="asneeded">Según necesidad</option>
+          <option value="weekly">Semanal</option>
+          <option value="other">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Instrucciones</label><input class="fc" id="mt-inst" type="text" placeholder="Ej: Con comida, por la mañana"></div>
+    <div class="f-row">
+      <div class="fg"><label>Inicio</label><input class="fc" id="mt-start" type="date"></div>
+      <div class="fg"><label>Fin (opcional)</label><input class="fc" id="mt-end" type="date"></div>
+    </div>
+    <div class="fg">
+      <label class="tgl"><input type="checkbox" id="mt-active" checked><span class="tgl-track"></span><span class="tgl-lbl">Tratamiento activo</span></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="mt-cancel">Cancelar</button>
+      <button class="btn btn-p" id="mt-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dose -->
+<div class="overlay" id="m-dose">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Registrar dosis</div>
+    <div class="card" style="margin-bottom:1rem" id="dose-info"></div>
+    <div class="f-row">
+      <div class="fg"><label>Cantidad</label><input class="fc" id="md-qty" type="number" min="0.5" step="0.5" value="1"></div>
+      <div class="fg"><label>Hora</label><input class="fc" id="md-time" type="time"></div>
+    </div>
+    <div class="fg"><label>Fecha</label><input class="fc" id="md-date" type="date"></div>
+    <div class="fg"><label>Notas</label><input class="fc" id="md-notes" type="text" placeholder="Opcional…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="md-cancel">Cancelar</button>
+      <button class="btn btn-p" id="md-save">✓ Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="overlay center" id="m-confirm">
+  <div class="modal">
+    <div class="modal-ttl" id="cfm-ttl">¿Confirmar?</div>
+    <p style="font-size:.9rem;color:var(--gray-500);line-height:1.5" id="cfm-msg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="cfm-no">Cancelar</button>
+      <button class="btn btn-d" id="cfm-yes">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import -->
+<div class="overlay" id="m-import">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Importar datos</div>
+    <div class="card" style="background:var(--primary-light);border-color:var(--primary);margin-bottom:1rem">
+      <div style="font-size:.8125rem;color:var(--primary-dark);line-height:1.5">
+        <strong>CSV esperado:</strong><br>
+        nombre, cantidad, unidad, stock_minimo, caducidad (YYYY-MM), ubicacion, categoria, notas
+      </div>
+    </div>
+    <div class="fg">
+      <label>Archivo CSV o JSON</label>
+      <input class="fc" id="imp-file" type="file" accept=".csv,.json" style="height:auto;padding:.625rem">
+    </div>
+    <div class="fg">
+      <label class="tgl"><input type="checkbox" id="imp-merge" checked><span class="tgl-track"></span><span class="tgl-lbl">Fusionar con datos existentes</span></label>
+      <div class="f-hint mt2">Desactivado = reemplaza todos los medicamentos</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="imp-cancel">Cancelar</button>
+      <button class="btn btn-p" id="imp-ok">Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Google Sheets -->
+<div class="overlay center" id="m-gsheets">
+  <div class="modal">
+    <div class="modal-ttl">Conexión con Casa</div>
+    <p style="font-size:.875rem;color:var(--gray-500);margin-bottom:1rem;line-height:1.5">La conexión con tu Google Sheet se gestiona desde Casa, con tu clave. Desde aquí puedes comprobar que funciona.</p>
+    <div id="gs-test-result" style="display:none;font-size:.8125rem;padding:.5rem .75rem;border-radius:8px;margin-top:.25rem"></div>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="gs-test">Probar</button>
+      <button class="btn btn-s" id="gs-cancel">Cerrar</button>
+      <a class="btn btn-p" href="../ajustes/" style="text-decoration:none;text-align:center">Ajustes de Casa</a>
+    </div>
+  </div>
+</div>
+
+<!-- SIGRE Report -->
+<div class="overlay" id="m-sigre-rep">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Informe SIGRE</div>
+    <div id="sigre-rep-content" class="report-box"></div>
+    <div class="modal-actions">
+      <button class="btn btn-s" id="srep-close">Cerrar</button>
+      <button class="btn btn-g" id="srep-copy">📋 Copiar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+</div>
+
+<script>
+const App = (() => {
+  const S = {
+    meds: [], treats: [], doses: [],
+    section: 'inicio', filter: 'all', q: '',
+    editMedId: null, editTreatId: null, doseTreatId: null,
+    confirmCb: null, gsUrl: '',
+  };
+
+  // ── API LAYER ────────────────────────────────────────────
+  // NOTES TÈCNIQUES (Google Apps Script):
+  //   • redirect:'follow'   → obligatori; Apps Script retorna 302 a script.googleusercontent.com
+  //   • credentials:'omit'  → evita preflight OPTIONS per a cookies de sessió
+  //   • Content-Type:'text/plain;charset=utf-8' → mai 'application/json' (trenca CORS per preflight)
+  //   • URL ha de ser /exec  → mai /dev (requereix autenticació)
+  //   • Desplegament: Execute as Me · Who has access: Anyone (sense login)
+  // Casa: la URL y la clave vienen de Casa > Ajustes (comun/casa.js).
+  // Permiso de este dispositivo: 'editar', 'ver', 'ninguno' o null (sin conectar).
+  const PERMISO = Casa.permiso('botiquin');
+  const conectado = () => { const c = Casa.conexion(); return Boolean(c.url && c.clave); };
+
+  function ambTimeout(promesa) {
+    let t;
+    const limit = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('Tiempo de espera agotado (30s). Comprueba tu conexión.')), 30000); });
+    return Promise.race([promesa, limit]).finally(() => clearTimeout(t));
+  }
+
+  const API = {
+    // Verdadero si este dispositivo está conectado a Casa (antes: la URL del script).
+    get url() { return conectado(); },
+
+    // Lectura — llança error si falla; el cridor ha de fer catch
+    async get(entitat, filtre = 'tots') {
+      if (!this.url) return null;
+      const j = await ambTimeout(Casa.llamar('botiquin', 'llistar', { entitat, filtre }));
+      return j.datos.registres;
+    },
+
+    // Escriptura — mateix cos que abans (accio, entitat, id, camps…)
+    async post(payload) {
+      if (!this.url) return { ok: true };
+      if (PERMISO === 'ver') throw new Error('Solo puedes ver el botiquín, no modificarlo.');
+      const j = await ambTimeout(Casa.llamar('botiquin', payload.accio, payload));
+      return Object.assign({ ok: true }, j.datos);
+    },
+
+    // Test ràpid de connexió: retorna { ok, n, error }
+    async test() {
+      try {
+        const registres = await this.get('medicaments', 'tots');
+        return { ok: true, n: Array.isArray(registres) ? registres.length : 0 };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    },
+  };
+
+  // Crida API en background — mostra toast amb el missatge real si falla
+  function apiPost(payload) {
+    if (!API.url) return;
+    API.post(payload).catch(err => toast('⚠️ Sync: ' + err.message, 'warn'));
+  }
+
+  async function syncFromAPI(silent = false) {
+    if (!silent) toast('Sincronizando con Google Sheets…');
+    try {
+      const [meds, treats, doses] = await Promise.all([
+        API.get('medicaments', 'tots'),
+        API.get('tractaments', 'tots'),
+        API.get('dosis', 'tots'),
+      ]);
+      if (Array.isArray(meds))   S.meds   = meds;
+      if (Array.isArray(treats)) S.treats = treats;
+      if (Array.isArray(doses))  S.doses  = doses;
+      save(); updateSIGREBadge(); render(S.section);
+      if (!silent) toast('Datos sincronizados ✓', 'ok');
+      return true;
+    } catch (err) {
+      if (!silent) toast('Error sync: ' + err.message, 'err');
+      console.error('[syncFromAPI]', err);
+      return false;
+    }
+  }
+
+  // ── Persist ──────────────────────────────────────────────
+  function load() {
+    S.meds    = JSON.parse(localStorage.getItem('mh_meds')   || '[]');
+    S.treats  = JSON.parse(localStorage.getItem('mh_treats') || '[]');
+    S.doses   = JSON.parse(localStorage.getItem('mh_doses')  || '[]');
+    S.gsUrl   = conectado() ? 'casa' : '';
+  }
+  function save() {
+    localStorage.setItem('mh_meds',   JSON.stringify(S.meds));
+    localStorage.setItem('mh_treats', JSON.stringify(S.treats));
+    localStorage.setItem('mh_doses',  JSON.stringify(S.doses));
+  }
+
+  // ── Utils ─────────────────────────────────────────────────
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const fmtDate = d => {
+    if (!d) return '';
+    const [y,mo,dd] = String(d).split('-');
+    return `${dd}/${mo}/${y}`;
+  };
+  const fmtTime = t => {
+    if (!t) return '';
+    const s = String(t).trim();
+    if (/^\d{1,2}:\d{2}$/.test(s)) return s;
+    const m = s.match(/(\d{2}:\d{2}):\d{2}/);
+    return m ? m[1] : '';
+  };
+  const parseYM = d => {
+    if (!d) return null;
+    const s = String(d).trim();
+    let x = s.match(/^(\d{4})-(\d{2})/);
+    if (x) return { y: +x[1], mo: +x[2] };
+    x = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (x) return { y: +x[3], mo: +x[2] };
+    return null;
+  };
+  const fmtMonth = d => {
+    const p = parseYM(d);
+    if (!p) return '—';
+    return `${String(p.mo).padStart(2,'0')}/${p.y}`;
+  };
+  const daysUntil = exp => {
+    const p = parseYM(exp);
+    if (!p) return null;
+    return Math.floor((new Date(p.y, p.mo, 0) - new Date().setHours(0,0,0,0)) / 86400000);
+  };
+  const expStatus = med => {
+    const d = daysUntil(med.expiryDate);
+    if (d === null) return 'none';
+    if (d < 0) return 'expired';
+    if (d <= 30) return 'soon';
+    return 'ok';
+  };
+  const stockStatus = med => {
+    if (med.quantity <= 0) return 'empty';
+    if (med.minStock > 0 && med.quantity <= med.minStock) return 'low';
+    return 'ok';
+  };
+  const freqLabel = f => ({once:'1×/día',twice:'2×/día',three:'3×/día',four:'4×/día',asneeded:'Según necesidad',weekly:'Semanal',other:'Otro'}[f]||f);
+
+  function toast(msg, type='') {
+    const el = document.createElement('div');
+    el.className = 'toast' + (type ? ' '+type : '');
+    el.textContent = msg;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  // ── Navigation ────────────────────────────────────────────
+  function go(sec) {
+    S.section = sec;
+    document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+    document.getElementById('s-' + sec).classList.add('active');
+    document.querySelector(`.ni[data-s="${sec}"]`).classList.add('active');
+    const fab = document.getElementById('fab');
+    if (sec === 'botiquin') {
+      fab.style.display = 'flex'; fab.onclick = () => openMedModal();
+    } else if (sec === 'tratamientos') {
+      fab.style.display = 'flex'; fab.onclick = () => openTreatModal();
+    } else {
+      fab.style.display = 'none';
+    }
+    render(sec);
+  }
+  function render(sec) {
+    if (sec === 'inicio') renderDash();
+    else if (sec === 'botiquin') renderInv();
+    else if (sec === 'tratamientos') renderTreats();
+    else if (sec === 'sigre') renderSIGRE();
+  }
+  function updateSIGREBadge() {
+    const n = S.meds.filter(m => m.forSIGRE).length;
+    const b = document.getElementById('sigre-badge');
+    b.style.display = n > 0 ? 'flex' : 'none';
+    b.textContent = n;
+  }
+
+  // ── DASHBOARD ─────────────────────────────────────────────
+  function renderDash() {
+    const now = new Date();
+    const h = now.getHours();
+    document.getElementById('dash-greeting').textContent =
+      h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+    document.getElementById('dash-date').textContent =
+      now.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+
+    const activeMeds   = S.meds.filter(m => !m.forSIGRE);
+    const activeTreats = S.treats.filter(t => t.active);
+    const expiringList = activeMeds.filter(m => expStatus(m) === 'soon');
+    const expiredList  = activeMeds.filter(m => expStatus(m) === 'expired');
+    const lowList      = activeMeds.filter(m => stockStatus(m) !== 'ok');
+
+    document.getElementById('stat-grid').innerHTML = `
+      <div class="stat-card primary"><div class="stat-ico">💊</div><div class="stat-val">${activeMeds.length}</div><div class="stat-lbl">Medicamentos</div></div>
+      <div class="stat-card success"><div class="stat-ico">📋</div><div class="stat-val">${activeTreats.length}</div><div class="stat-lbl">Tratamientos activos</div></div>
+      <div class="stat-card warning"><div class="stat-ico">⚠️</div><div class="stat-val">${expiringList.length + expiredList.length}</div><div class="stat-lbl">Caducidad próxima/pasada</div></div>
+      <div class="stat-card danger"><div class="stat-ico">📉</div><div class="stat-val">${lowList.length}</div><div class="stat-lbl">Stock bajo / Agotado</div></div>
+    `;
+
+    const alerts = [];
+    expiredList.forEach(m => alerts.push({cls:'danger',title:m.name,desc:`Caducó: ${fmtMonth(m.expiryDate)}`,badge:'Caducado'}));
+    expiringList.forEach(m => {
+      const d = daysUntil(m.expiryDate);
+      alerts.push({cls:'warning',title:m.name,desc:`Caduca: ${fmtMonth(m.expiryDate)}`,badge:`${d}d`});
+    });
+    S.meds.filter(m=>stockStatus(m)==='empty').forEach(m=>alerts.push({cls:'danger',title:m.name,desc:'Sin stock',badge:'Agotado'}));
+    S.meds.filter(m=>stockStatus(m)==='low').forEach(m=>alerts.push({cls:'warning',title:m.name,desc:`Quedan ${m.quantity} ${m.unit}`,badge:'Stock bajo'}));
+
+    const al = document.getElementById('alerts-list');
+    al.innerHTML = alerts.length === 0
+      ? `<div class="al-item success"><span class="al-dot"></span><div class="al-body"><div class="al-ttl">Todo en orden</div><div class="al-desc">No hay alertas activas</div></div><span class="al-badge">✓ OK</span></div>`
+      : alerts.slice(0,6).map(a=>`<div class="al-item ${a.cls}"><span class="al-dot"></span><div class="al-body"><div class="al-ttl">${esc(a.title)}</div><div class="al-desc">${esc(a.desc)}</div></div><span class="al-badge">${esc(a.badge)}</span></div>`).join('');
+
+    const recent = [...S.doses].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
+    const rd = document.getElementById('recent-doses');
+    rd.innerHTML = recent.length === 0
+      ? `<div class="empty" style="padding:1.5rem"><div class="empty-ico" style="font-size:2rem">💉</div><div class="empty-ttl">Sin dosis registradas</div><div class="empty-desc">Las dosis aparecerán aquí</div></div>`
+      : recent.map(d=>{
+          const med = S.meds.find(m=>m.id===d.medicineId);
+          const nm  = med ? med.name : d.medicineName || '?';
+          return `<div class="dose-item"><div class="dose-dot"></div><div class="dose-info"><div class="dose-med">${esc(nm)}</div><div class="dose-time">${fmtDate(d.date)}${d.time?' · '+fmtTime(d.time):''}</div></div><div class="dose-qty">${d.quantity} ud.</div></div>`;
+        }).join('');
+  }
+
+  // ── INVENTORY ─────────────────────────────────────────────
+  function renderInv() {
+    const q = S.q.toLowerCase();
+    const f = S.filter;
+    const filtered = S.meds.filter(m => {
+      if (q && !m.name.toLowerCase().includes(q) && !(m.lab||'').toLowerCase().includes(q) && !(m.location||'').toLowerCase().includes(q)) return false;
+      if (f === 'low')      return stockStatus(m) !== 'ok';
+      if (f === 'expiring') return expStatus(m) === 'soon';
+      if (f === 'expired')  return expStatus(m) === 'expired';
+      if (f === 'sigre')    return m.forSIGRE;
+      return true;
+    });
+
+    document.getElementById('inv-count').textContent = `${filtered.length} medicamento${filtered.length!==1?'s':''}`;
+    const list = document.getElementById('med-list');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-ico">💊</div><div class="empty-ttl">${S.meds.length===0?'Botiquín vacío':'Sin resultados'}</div><div class="empty-desc">${S.meds.length===0?'Pulsa + para añadir tu primer medicamento':'Prueba con otros filtros'}</div></div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(m => {
+      const ss = stockStatus(m);
+      const es = expStatus(m);
+      const days = daysUntil(m.expiryDate);
+      const maxRef = m.minStock > 0 ? m.minStock * 4 : m.quantity || 1;
+      const pct = Math.min(100, (m.quantity / maxRef) * 100);
+
+      return `<div class="med-card">
+        <div class="med-card-hdr">
+          <div class="med-name">${esc(m.name)}</div>
+          ${m.forSIGRE?'<span class="med-tag" style="flex-shrink:0;background:#FEF3C7;color:#92400E;white-space:nowrap">♻️ SIGRE</span>':''}
+        </div>
+        <div class="med-tags">
+          <span class="med-tag">${esc(m.unit)}</span>
+          ${m.usage?`<span class="med-tag med-tag-blue">${esc(m.usage)}</span>`:''}
+          ${m.category?`<span class="med-tag med-tag-green">${esc(m.category)}${m.pet&&m.category==='animales'?' · '+esc(m.pet):''}</span>`:''}
+        </div>
+        <div class="med-meta">
+          <span class="chip c-stock ${ss}">📦 ${m.quantity} ${esc(m.unit)}</span>
+          ${m.expiryDate?`<span class="chip c-expiry ${es}">${es==='expired'?'❌':es==='soon'?'⚠️':'📅'} ${fmtMonth(m.expiryDate)}</span>`:''}
+          ${m.location?`<span class="chip c-loc">📍 ${esc(m.location)}</span>`:''}
+        </div>
+        ${m.minStock>0?`<div class="prog"><div class="prog-fill ${ss}" style="width:${pct}%"></div></div>`:''}
+        <div class="med-actions">
+          <button class="btn btn-s btn-sm" onclick="App.openMedModal('${m.id}')">✏️ Editar</button>
+          <button class="btn btn-sm ${m.forSIGRE?'btn-g':'btn-w'}" onclick="App.toggleSIGRE('${m.id}')">♻️ ${m.forSIGRE?'Quitar SIGRE':'SIGRE'}</button>
+          <button class="btn btn-d btn-sm" onclick="App.delConfirm('med','${m.id}')">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── TREATMENTS ────────────────────────────────────────────
+  function renderTreats() {
+    const active   = S.treats.filter(t => t.active);
+    const inactive = S.treats.filter(t => !t.active);
+    document.getElementById('treat-count').textContent = `${active.length} activo${active.length!==1?'s':''}`;
+    const list = document.getElementById('treat-list');
+
+    if (S.treats.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-ico">📋</div><div class="empty-ttl">Sin tratamientos</div><div class="empty-desc">Pulsa + para añadir un tratamiento</div></div>`;
+      return;
+    }
+
+    const renderGroup = (arr, lbl) => {
+      if (!arr.length) return '';
+      return `<div class="sec-div">${lbl}</div>` + arr.map(t => {
+        const med = S.meds.find(m=>m.id===t.medicineId);
+        const ss  = med ? stockStatus(med) : 'empty';
+        const todayDoses = S.doses.filter(d=>d.treatmentId===t.id && d.date===new Date().toISOString().slice(0,10)).length;
+        return `<div class="treat-card">
+          <div class="treat-hdr">
+            <div><div class="treat-name">${esc(t.name)}</div><div class="treat-med">💊 ${esc(t.medicineName)}</div></div>
+            <label class="tgl"><input type="checkbox" ${t.active?'checked':''} onchange="App.toggleActive('${t.id}',this.checked)"><span class="tgl-track"></span></label>
+          </div>
+          <div class="treat-meta">
+            <span class="chip c-stock">${t.doseQty} ud. · ${freqLabel(t.frequency)}</span>
+            ${t.instructions?`<span class="chip c-loc">ℹ️ ${esc(t.instructions)}</span>`:''}
+            <span class="chip c-stock ${ss}">📦 ${med?med.quantity+' '+med.unit:'N/D'}</span>
+            ${todayDoses>0?`<span class="chip c-active">✓ ${todayDoses} hoy</span>`:''}
+          </div>
+          <div class="treat-actions">
+            ${t.active?`<button class="btn btn-p btn-sm" onclick="App.openDoseModal('${t.id}')">💊 Tomar dosis</button>`:''}
+            <button class="btn btn-s btn-sm" onclick="App.openTreatModal('${t.id}')">✏️ Editar</button>
+            <button class="btn btn-d btn-sm" onclick="App.delConfirm('treat','${t.id}')">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+    };
+
+    list.innerHTML = renderGroup(active,'Activos') + renderGroup(inactive,'Inactivos');
+  }
+
+  // ── SIGRE ─────────────────────────────────────────────────
+  function renderSIGRE() {
+    const marked   = S.meds.filter(m => m.forSIGRE);
+    const expMeds  = S.meds.filter(m => expStatus(m) === 'expired' && !m.forSIGRE);
+    const list = document.getElementById('sigre-list');
+    let html = '';
+
+    if (marked.length) {
+      html += '<div class="sec-div">Marcados para SIGRE</div>';
+      html += marked.map(m=>`<div class="med-card">
+        <div class="med-card-hdr">
+          <div><div class="med-name">${esc(m.name)}</div><div class="med-fmt">${m.quantity} ${esc(m.unit)}${m.expiryDate?' · Cad: '+fmtMonth(m.expiryDate):''}</div></div>
+          <span class="chip c-sigre">♻️</span>
+        </div>
+        <div class="med-actions">
+          <button class="btn btn-g btn-sm" onclick="App.delivered('${m.id}')">✓ Entregado</button>
+          <button class="btn btn-s btn-sm" onclick="App.toggleSIGRE('${m.id}')">↩ Devolver</button>
+        </div>
+      </div>`).join('');
+    }
+
+    if (expMeds.length) {
+      html += '<div class="sec-div">Caducados — sugerencia</div>';
+      html += expMeds.map(m=>`<div class="med-card" style="border-color:#FEE2E2">
+        <div class="med-card-hdr">
+          <div><div class="med-name">${esc(m.name)}</div><div class="med-fmt" style="color:var(--danger)">Caducó: ${fmtMonth(m.expiryDate)}</div></div>
+          <span class="chip c-expiry expired">❌</span>
+        </div>
+        <div class="med-actions">
+          <button class="btn btn-w btn-sm" onclick="App.toggleSIGRE('${m.id}')">♻️ Marcar SIGRE</button>
+        </div>
+      </div>`).join('');
+    }
+
+    if (!marked.length && !expMeds.length) {
+      html = `<div class="empty"><div class="empty-ico">♻️</div><div class="empty-ttl">Sin medicamentos para desechar</div><div class="empty-desc">Marca medicamentos como SIGRE desde el botiquín</div></div>`;
+    }
+
+    list.innerHTML = html;
+    document.getElementById('sigre-report-btn').innerHTML = marked.length
+      ? `<button class="btn btn-o btn-full" onclick="App.showSIGREReport()">📄 Generar informe SIGRE</button>` : '';
+  }
+
+  // ── MEDICINE MODAL ────────────────────────────────────────
+  function openMedModal(id = null) {
+    S.editMedId = id;
+    document.getElementById('m-med-ttl').textContent = id ? 'Editar medicamento' : 'Nuevo medicamento';
+    if (id) {
+      const m = S.meds.find(x=>x.id===id);
+      document.getElementById('mm-name').value   = m.name;
+      document.getElementById('mm-qty').value    = m.quantity;
+      document.getElementById('mm-unit').value   = m.unit;
+      document.getElementById('mm-min').value    = m.minStock || '';
+      document.getElementById('mm-exp').value    = m.expiryDate || '';
+      document.getElementById('mm-lab').value    = m.lab || '';
+      document.getElementById('mm-loc').value    = m.location || '';
+      document.getElementById('mm-cat').value    = m.category || '';
+      document.getElementById('mm-uso').value    = m.usage || '';
+      document.getElementById('mm-notes').value  = m.notes || '';
+      document.getElementById('mm-sigre').checked= !!m.forSIGRE;
+      document.getElementById('mm-pet').value    = m.pet || '';
+    } else {
+      ['mm-name','mm-qty','mm-min','mm-exp','mm-lab','mm-loc','mm-notes'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('mm-unit').value='comprimidos';
+      document.getElementById('mm-cat').value='';
+      document.getElementById('mm-uso').value='';
+      document.getElementById('mm-sigre').checked=false;
+      document.getElementById('mm-pet').value='';
+    }
+    document.getElementById('mm-pet-row').style.display =
+      document.getElementById('mm-cat').value === 'animales' ? '' : 'none';
+    document.getElementById('m-med').classList.add('active');
+    document.getElementById('mm-name').focus();
+  }
+
+  function saveMed() {
+    const name = document.getElementById('mm-name').value.trim();
+    const qty  = parseFloat(document.getElementById('mm-qty').value);
+    if (!name || isNaN(qty)) { toast('Nombre y cantidad son obligatorios','err'); return; }
+    const existing = S.editMedId ? S.meds.find(x=>x.id===S.editMedId) : null;
+    const forSIGRE = document.getElementById('mm-sigre').checked;
+    const cat = document.getElementById('mm-cat').value;
+    const med = {
+      id: S.editMedId || uid(),
+      name, quantity: qty,
+      unit:      document.getElementById('mm-unit').value,
+      minStock:  parseFloat(document.getElementById('mm-min').value) || 0,
+      expiryDate:document.getElementById('mm-exp').value || null,
+      lab:       document.getElementById('mm-lab').value.trim(),
+      location:  document.getElementById('mm-loc').value.trim(),
+      category:  cat,
+      pet:       cat === 'animales' ? document.getElementById('mm-pet').value : '',
+      usage:     document.getElementById('mm-uso').value,
+      notes:     document.getElementById('mm-notes').value.trim(),
+      forSIGRE,
+      sigreDate: forSIGRE
+        ? (existing?.sigreDate || new Date().toISOString().slice(0,10))
+        : null,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+    };
+    if (S.editMedId) {
+      const i = S.meds.findIndex(x=>x.id===S.editMedId);
+      S.meds[i] = med;
+      toast('Medicamento actualizado','ok');
+      apiPost({ accio:'editar', entitat:'medicaments', id:med.id,
+        name:med.name, quantity:med.quantity, unit:med.unit, minStock:med.minStock,
+        expiryDate:med.expiryDate, lab:med.lab, location:med.location,
+        category:med.category, pet:med.pet, notes:med.notes,
+        forSIGRE:med.forSIGRE, sigreDate:med.sigreDate });
+    } else {
+      S.meds.push(med);
+      toast('Medicamento añadido','ok');
+      apiPost({ accio:'crear', entitat:'medicaments', ...med });
+    }
+    save(); closeM('m-med'); renderInv(); updateSIGREBadge();
+  }
+
+  // ── TREATMENT MODAL ───────────────────────────────────────
+  function openTreatModal(id = null) {
+    S.editTreatId = id;
+    document.getElementById('m-treat-ttl').textContent = id ? 'Editar tratamiento' : 'Nuevo tratamiento';
+    const sel = document.getElementById('mt-med');
+    sel.innerHTML = '<option value="">Seleccionar medicamento…</option>' +
+      S.meds.filter(m=>!m.forSIGRE).map(m=>`<option value="${m.id}">${esc(m.name)} (${m.quantity} ${m.unit})</option>`).join('');
+    if (id) {
+      const t = S.treats.find(x=>x.id===id);
+      document.getElementById('mt-name').value  = t.name;
+      sel.value = t.medicineId || '';
+      document.getElementById('mt-dqty').value  = t.doseQty || 1;
+      document.getElementById('mt-freq').value  = t.frequency || 'once';
+      document.getElementById('mt-inst').value  = t.instructions || '';
+      document.getElementById('mt-start').value = t.startDate || '';
+      document.getElementById('mt-end').value   = t.endDate || '';
+      document.getElementById('mt-active').checked = t.active !== false;
+    } else {
+      ['mt-name','mt-inst','mt-end'].forEach(i=>document.getElementById(i).value='');
+      document.getElementById('mt-dqty').value  = 1;
+      document.getElementById('mt-freq').value  = 'once';
+      document.getElementById('mt-start').value = new Date().toISOString().slice(0,10);
+      document.getElementById('mt-active').checked = true;
+    }
+    document.getElementById('mt-med-search').value = '';
+    document.getElementById('m-treat').classList.add('active');
+  }
+
+  function saveTreat() {
+    const name = document.getElementById('mt-name').value.trim();
+    const medId= document.getElementById('mt-med').value;
+    if (!name) { toast('El nombre es obligatorio','err'); return; }
+    if (!medId){ toast('Selecciona un medicamento','err'); return; }
+    const med = S.meds.find(m=>m.id===medId);
+    const t = {
+      id: S.editTreatId || uid(),
+      name, medicineId: medId,
+      medicineName: med ? med.name : '',
+      doseQty: parseFloat(document.getElementById('mt-dqty').value)||1,
+      frequency: document.getElementById('mt-freq').value,
+      instructions: document.getElementById('mt-inst').value.trim(),
+      startDate: document.getElementById('mt-start').value||null,
+      endDate: document.getElementById('mt-end').value||null,
+      active: document.getElementById('mt-active').checked,
+      createdAt: new Date().toISOString(),
+    };
+    if (S.editTreatId) {
+      const i = S.treats.findIndex(x=>x.id===S.editTreatId);
+      t.createdAt = S.treats[i].createdAt;
+      S.treats[i] = t;
+      toast('Tratamiento actualizado','ok');
+      apiPost({ accio:'editar', entitat:'tractaments', id:t.id,
+        name:t.name, medicineId:t.medicineId, medicineName:t.medicineName,
+        doseQty:t.doseQty, frequency:t.frequency, instructions:t.instructions,
+        startDate:t.startDate, endDate:t.endDate, active:t.active });
+    } else {
+      S.treats.push(t);
+      toast('Tratamiento creado','ok');
+      apiPost({ accio:'crear', entitat:'tractaments', ...t });
+    }
+    save(); closeM('m-treat'); renderTreats();
+  }
+
+  // ── DOSE MODAL ────────────────────────────────────────────
+  function openDoseModal(treatId) {
+    S.doseTreatId = treatId;
+    const t = S.treats.find(x=>x.id===treatId);
+    const med = S.meds.find(m=>m.id===t.medicineId);
+    document.getElementById('dose-info').innerHTML = `
+      <div style="font-weight:600;color:var(--gray-800)">${esc(t.name)}</div>
+      <div style="font-size:.8125rem;color:var(--primary);margin-top:.25rem">💊 ${esc(t.medicineName)}</div>
+      ${med?`<div style="font-size:.8125rem;color:var(--gray-500);margin-top:.25rem">Stock: <strong>${med.quantity} ${med.unit}</strong></div>`:''}`;
+    document.getElementById('md-qty').value   = t.doseQty||1;
+    const now = new Date();
+    document.getElementById('md-date').value  = now.toISOString().slice(0,10);
+    document.getElementById('md-time').value  = now.toTimeString().slice(0,5);
+    document.getElementById('md-notes').value = '';
+    document.getElementById('m-dose').classList.add('active');
+  }
+
+  async function saveDose() {
+    const t = S.treats.find(x=>x.id===S.doseTreatId);
+    if (!t) return;
+
+    // Sync before deducting so we work with the latest stock from Sheets
+    if (API.url) await syncFromAPI(true);
+
+    const qty  = parseFloat(document.getElementById('md-qty').value)||1;
+    const date = document.getElementById('md-date').value;
+    const time = document.getElementById('md-time').value;
+    const med  = S.meds.find(m=>m.id===t.medicineId);
+    if (med) {
+      if (med.quantity < qty) { toast('Stock insuficiente para esta dosis','warn'); return; }
+      med.quantity = parseFloat((med.quantity - qty).toFixed(2));
+    }
+    const dose = {
+      id: uid(), treatmentId: t.id, medicineId: t.medicineId,
+      medicineName: t.medicineName, quantity: qty, date, time,
+      notes: document.getElementById('md-notes').value.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    S.doses.push(dose);
+    save(); closeM('m-dose');
+    toast(`✓ Dosis registrada${med?' · '+med.quantity+' '+med.unit+' restantes':''}`, 'ok');
+    apiPost({ accio:'crear', entitat:'dosis', ...dose });
+    if (med) apiPost({ accio:'editar', entitat:'medicaments', id:med.id, quantity:med.quantity });
+    renderTreats();
+  }
+
+  // ── CONFIRM ───────────────────────────────────────────────
+  function confirm(title, msg, cb, btnLbl='Eliminar') {
+    S.confirmCb = cb;
+    document.getElementById('cfm-ttl').textContent = title;
+    document.getElementById('cfm-msg').textContent = msg;
+    document.getElementById('cfm-yes').textContent = btnLbl;
+    document.getElementById('m-confirm').classList.add('active');
+  }
+
+  function delConfirm(type, id) {
+    if (type === 'med') {
+      const m = S.meds.find(x=>x.id===id);
+      confirm('¿Eliminar medicamento?', `"${m.name}" se eliminará del botiquín.`, () => {
+        S.meds = S.meds.filter(x=>x.id!==id);
+        save(); renderInv(); updateSIGREBadge();
+        toast('Medicamento eliminado');
+        apiPost({ accio:'eliminar', entitat:'medicaments', id });
+      });
+    } else {
+      const t = S.treats.find(x=>x.id===id);
+      confirm('¿Eliminar tratamiento?', `"${t.name}" y su historial se eliminarán.`, () => {
+        S.treats = S.treats.filter(x=>x.id!==id);
+        S.doses  = S.doses.filter(d=>d.treatmentId!==id);
+        save(); renderTreats();
+        toast('Tratamiento eliminado');
+        apiPost({ accio:'eliminar', entitat:'tractaments', id });
+      });
+    }
+  }
+
+  // ── SIGRE ACTIONS ─────────────────────────────────────────
+  function toggleSIGRE(id) {
+    const m = S.meds.find(x=>x.id===id);
+    if (!m) return;
+    m.forSIGRE = !m.forSIGRE;
+    m.sigreDate = m.forSIGRE ? new Date().toISOString().slice(0,10) : null;
+    save(); updateSIGREBadge();
+    toast(m.forSIGRE ? `${m.name} marcado para SIGRE` : `${m.name} retirado de SIGRE`);
+    apiPost({ accio:'editar', entitat:'medicaments', id, forSIGRE:m.forSIGRE, sigreDate:m.sigreDate });
+    if (S.section==='botiquin') renderInv();
+    else if (S.section==='sigre') renderSIGRE();
+  }
+
+  function delivered(id) {
+    confirm('¿Marcar como entregado?','El medicamento se eliminará del inventario.',()=>{
+      S.meds = S.meds.filter(x=>x.id!==id);
+      save(); renderSIGRE(); updateSIGREBadge();
+      toast('Entregado y eliminado del inventario','ok');
+      apiPost({ accio:'eliminar', entitat:'medicaments', id });
+    },'Confirmar entrega');
+  }
+
+  function toggleActive(id, val) {
+    const t = S.treats.find(x=>x.id===id);
+    if (t) {
+      t.active = val; save();
+      toast(val?'Activado':'Pausado'); renderTreats();
+      apiPost({ accio:'editar', entitat:'tractaments', id, active:val });
+    }
+  }
+
+  // ── SIGRE REPORT ──────────────────────────────────────────
+  function showSIGREReport() {
+    const meds = S.meds.filter(m=>m.forSIGRE);
+    const date = new Date().toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'});
+    let r = `INFORME DE ENTREGA SIGRE\nFecha: ${date}\n${'─'.repeat(38)}\n\n`;
+    meds.forEach((m,i)=>{
+      r += `${i+1}. ${m.name}\n   Cantidad: ${m.quantity} ${m.unit}\n`;
+      if (m.expiryDate) r += `   Caducidad: ${fmtMonth(m.expiryDate)}\n`;
+      r += '\n';
+    });
+    r += `${'─'.repeat(38)}\nTotal: ${meds.length} medicamento${meds.length!==1?'s':''}\n\nPunto SIGRE: Farmacia más cercana\nwww.sigre.es`;
+    document.getElementById('sigre-rep-content').textContent = r;
+    document.getElementById('m-sigre-rep').classList.add('active');
+  }
+
+  // ── IMPORT / EXPORT ───────────────────────────────────────
+  function exportJSON() {
+    dl('medihome-backup.json', JSON.stringify({version:'1.0',exportDate:new Date().toISOString(),medicines:S.meds,treatments:S.treats,doses:S.doses},null,2),'application/json');
+    toast('Backup JSON descargado','ok');
+  }
+  function exportCSV() {
+    const hdr = 'nombre,cantidad,unidad,stock_minimo,caducidad,ubicacion,categoria,notas,sigre';
+    const rows = S.meds.map(m=>[cv(m.name),m.quantity,cv(m.unit),m.minStock||'',m.expiryDate||'',cv(m.location||''),cv(m.category||''),cv(m.notes||''),m.forSIGRE?'si':'no'].join(','));
+    dl('medihome-inventario.csv',[hdr,...rows].join('\n'),'text/csv');
+    toast('CSV exportado','ok');
+  }
+  const cv = s => !s?'':(s.includes(',')||s.includes('"'))?`"${s.replace(/"/g,'""')}"`:s;
+  const dl = (name,content,mime) => {
+    const a = Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([content],{type:mime})),download:name});
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  function importCSV(txt, merge) {
+    const lines = txt.trim().split('\n').filter(l=>l.trim());
+    if (lines.length < 2) return 0;
+    const hdr = lines[0].split(',').map(h=>h.trim().toLowerCase());
+    const gi  = k => hdr.indexOf(k);
+    const ni=gi('nombre'),qi=gi('cantidad'),ui=gi('unidad'),mi=gi('stock_minimo'),ei=gi('caducidad'),li=gi('ubicacion'),ci=gi('categoria'),noi=gi('notas');
+    if (ni===-1) return -1;
+    const imported = [];
+    for (let i=1;i<lines.length;i++) {
+      const c = parseCSV(lines[i]);
+      const nm = c[ni]?.trim(); if (!nm) continue;
+      imported.push({id:uid(),name:nm,quantity:parseFloat(c[qi])||0,unit:c[ui]?.trim()||'unidades',minStock:parseFloat(c[mi])||0,expiryDate:c[ei]?.trim()||null,location:c[li]?.trim()||'',category:c[ci]?.trim()||'',notes:noi>=0?c[noi]?.trim()||'':'',forSIGRE:false,createdAt:new Date().toISOString()});
+    }
+    if (merge) S.meds = [...S.meds, ...imported];
+    else S.meds = imported;
+    save(); return imported.length;
+  }
+
+  function importJSON(txt, merge) {
+    let d; try { d=JSON.parse(txt); } catch(e) { return false; }
+    if (Array.isArray(d.medicines)) {
+      if (merge) { const ids=new Set(S.meds.map(m=>m.id)); d.medicines.forEach(m=>{ if(!ids.has(m.id)) S.meds.push(m); }); }
+      else { S.meds=d.medicines; if(d.treatments) S.treats=d.treatments; if(d.doses) S.doses=d.doses; }
+    }
+    save(); return true;
+  }
+
+  function parseCSV(line) {
+    const r=[]; let cur='',inQ=false;
+    for (const ch of line) {
+      if (ch==='"') inQ=!inQ;
+      else if (ch===','&&!inQ) { r.push(cur); cur=''; }
+      else cur+=ch;
+    }
+    r.push(cur); return r;
+  }
+
+  // ── CLOSE MODAL ───────────────────────────────────────────
+  const closeM = id => document.getElementById(id).classList.remove('active');
+
+  // ── SEED DATA ─────────────────────────────────────────────
+  function seed() {
+    if (S.meds.length || S.gsUrl) return; // no semar si hi ha API o dades locals
+    const now = new Date();
+    const mo = (delta) => {
+      const d = new Date(now); d.setMonth(d.getMonth()+delta);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    };
+    S.meds = [
+      {id:uid(),name:'Paracetamol 500mg',quantity:20,unit:'comprimidos',minStock:5,expiryDate:mo(6),lab:'',location:'Botiquín principal',category:'adultos',usage:'analgésico',pet:'',notes:'',forSIGRE:false,createdAt:new Date().toISOString()},
+      {id:uid(),name:'Ibuprofeno 400mg',quantity:3,unit:'comprimidos',minStock:5,expiryDate:mo(1),lab:'',location:'Armario baño',category:'adultos',usage:'antiinflamatorio',pet:'',notes:'Con comida',forSIGRE:false,createdAt:new Date().toISOString()},
+      {id:uid(),name:'Omeprazol 20mg',quantity:28,unit:'cápsulas',minStock:7,expiryDate:mo(8),lab:'',location:'Botiquín principal',category:'adultos',usage:'digestivo',pet:'',notes:'En ayunas',forSIGRE:false,createdAt:new Date().toISOString()},
+      {id:uid(),name:'Vitamina D3',quantity:0,unit:'cápsulas',minStock:10,expiryDate:mo(12),lab:'',location:'Nevera',category:'adultos',usage:'vitaminas',pet:'',notes:'',forSIGRE:false,createdAt:new Date().toISOString()},
+      {id:uid(),name:'Loratadina 10mg',quantity:8,unit:'comprimidos',minStock:3,expiryDate:mo(-2),lab:'',location:'Botiquín principal',category:'adultos',usage:'antialérgico',pet:'',notes:'',forSIGRE:true,sigreDate:new Date().toISOString().slice(0,10),createdAt:new Date().toISOString()},
+    ];
+    const omep = S.meds[2];
+    S.treats = [{id:uid(),name:'Protección gástrica',medicineId:omep.id,medicineName:omep.name,doseQty:1,frequency:'once',instructions:'En ayunas, por la mañana',startDate:new Date().toISOString().slice(0,10),endDate:null,active:true,createdAt:new Date().toISOString()}];
+    save();
+  }
+
+  // ── EVENTS ────────────────────────────────────────────────
+  function setupEvents() {
+    document.querySelectorAll('.ni').forEach(b => b.addEventListener('click',()=>go(b.dataset.s)));
+    document.getElementById('hdr-btn').onclick = () => go('inicio');
+
+    // Medicine
+    document.getElementById('mm-cancel').onclick = () => closeM('m-med');
+    document.getElementById('mm-save').onclick    = saveMed;
+    document.getElementById('mm-cat').addEventListener('change', () => {
+      document.getElementById('mm-pet-row').style.display =
+        document.getElementById('mm-cat').value === 'animales' ? '' : 'none';
+    });
+
+    // Treatment
+    document.getElementById('mt-cancel').onclick = () => closeM('m-treat');
+    document.getElementById('mt-save').onclick    = saveTreat;
+    document.getElementById('mt-med-search').addEventListener('input', () => {
+      const q = document.getElementById('mt-med-search').value.toLowerCase();
+      const current = document.getElementById('mt-med').value;
+      const meds = S.meds.filter(m => !m.forSIGRE && (m.name.toLowerCase().includes(q) || (m.lab||'').toLowerCase().includes(q)));
+      document.getElementById('mt-med').innerHTML =
+        '<option value="">Seleccionar medicamento…</option>' +
+        meds.map(m => `<option value="${m.id}"${m.id===current?' selected':''}>${esc(m.name)} (${m.quantity} ${m.unit})</option>`).join('');
+    });
+
+    // Dose
+    document.getElementById('md-cancel').onclick = () => closeM('m-dose');
+    document.getElementById('md-save').onclick    = saveDose;
+
+    // Confirm
+    document.getElementById('cfm-no').onclick  = () => closeM('m-confirm');
+    document.getElementById('cfm-yes').onclick = () => {
+      if (S.confirmCb) { S.confirmCb(); S.confirmCb=null; }
+      closeM('m-confirm');
+    };
+
+    // SIGRE report
+    document.getElementById('srep-close').onclick = () => closeM('m-sigre-rep');
+    document.getElementById('srep-copy').onclick  = () => {
+      navigator.clipboard.writeText(document.getElementById('sigre-rep-content').textContent)
+        .then(()=>toast('Informe copiado','ok')).catch(()=>toast('No se pudo copiar','err'));
+    };
+
+    // Search + filter
+    document.getElementById('search').addEventListener('input', e => { S.q=e.target.value; renderInv(); });
+    document.querySelectorAll('.pill').forEach(p => p.addEventListener('click',()=>{
+      document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active'); S.filter=p.dataset.f; renderInv();
+    }));
+
+    // Settings
+    document.getElementById('s-export-json').onclick = exportJSON;
+    document.getElementById('s-export-csv').onclick  = exportCSV;
+    document.getElementById('s-import').onclick = () => {
+      document.getElementById('imp-file').value='';
+      document.getElementById('imp-merge').checked=true;
+      document.getElementById('m-import').classList.add('active');
+    };
+    document.getElementById('imp-cancel').onclick = () => closeM('m-import');
+    document.getElementById('imp-ok').onclick = () => {
+      const file = document.getElementById('imp-file').files[0];
+      if (!file) { toast('Selecciona un archivo','err'); return; }
+      const merge = document.getElementById('imp-merge').checked;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const content = e.target.result;
+        const prevLen = S.meds.length;
+        if (file.name.endsWith('.json')) {
+          if (importJSON(content, merge)) {
+            toast(`Datos importados correctamente`,'ok');
+            closeM('m-import'); updateSIGREBadge(); render(S.section);
+            // Push nous registres a l'API
+            if (API.url) S.meds.slice(prevLen).forEach(m => apiPost({ accio:'crear', entitat:'medicaments', ...m }));
+          } else { toast('JSON inválido','err'); }
+        } else {
+          const n = importCSV(content, merge);
+          if (n === -1) { toast('Columna "nombre" no encontrada','err'); return; }
+          if (n === 0)  { toast('Sin datos en el archivo','err'); return; }
+          toast(`${n} medicamentos importados${API.url ? ' · Sincronizando…' : ''}`, 'ok');
+          closeM('m-import'); updateSIGREBadge(); renderInv();
+          // Push nous registres a l'API
+          if (API.url) S.meds.slice(prevLen).forEach(m => apiPost({ accio:'crear', entitat:'medicaments', ...m }));
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    // GSheets
+    document.getElementById('s-gsheets').onclick = () => {
+      document.getElementById('gs-test-result').style.display = 'none';
+      document.getElementById('m-gsheets').classList.add('active');
+    };
+    document.getElementById('gs-cancel').onclick = () => closeM('m-gsheets');
+    document.getElementById('gs-test').onclick = async () => {
+      const el = document.getElementById('gs-test-result');
+      el.style.display='block'; el.style.background='#EFF6FF'; el.style.color='#1E40AF'; el.textContent='Probando conexión…';
+      const r = await API.test();
+      if (r.ok) {
+        el.style.background='#ECFDF5'; el.style.color='#065F46';
+        el.textContent = `✓ Conectado · ${r.n} medicamento${r.n !== 1 ? 's' : ''} en el Sheet`;
+      } else {
+        el.style.background='#FEF2F2'; el.style.color='#991B1B';
+        el.textContent = '✗ ' + r.error;
+      }
+    };
+    // s-sync: descarrega totes les dades de Google Sheets (substitueix local)
+    document.getElementById('s-sync').onclick = () => syncFromAPI();
+
+    // Clear
+    document.getElementById('s-clear').onclick = () => confirm(
+      '¿Borrar todos los datos?',
+      'Se eliminarán medicamentos, tratamientos y dosis. No se puede deshacer.',
+      ()=>{ S.meds=[];S.treats=[];S.doses=[];save();updateSIGREBadge();render(S.section);toast('Datos borrados'); },
+      '🗑️ Borrar todo'
+    );
+
+    // Close overlays on backdrop click
+    document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('active'); }));
+  }
+
+  // ── INIT ──────────────────────────────────────────────────
+  async function init() {
+    load();
+    setupEvents();
+    if (S.gsUrl) {
+      document.getElementById('gsheets-status').textContent = 'Conectado a Casa ✓' + (PERMISO === 'ver' ? ' · solo ver' : '');
+      document.getElementById('s-sync').style.display = 'flex';
+      updateSIGREBadge();
+      go('inicio');
+      await syncFromAPI();
+
+      // Auto-sync every 5 minutes while the app is open
+      setInterval(() => { if (S.gsUrl) syncFromAPI(true); }, 5 * 60 * 1000);
+
+      // Sync when the user returns to the app (tab focus / phone unlock)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && S.gsUrl) syncFromAPI(true);
+      });
+    } else {
+      // Sense connexió a Casa no es carreguen dades d'exemple: es mostra l'avís.
+      updateSIGREBadge();
+      go('inicio');
+    }
+  }
+
+  return { init, openMedModal, openTreatModal, openDoseModal, delConfirm, toggleSIGRE, delivered, toggleActive, showSIGREReport };
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Casa: sin acceso, la sección no existe para esta persona; vuelve a la portada.
+  const permiso = Casa.permiso('botiquin');
+  if (permiso === 'ninguno') { location.replace(Casa.RAIZ); return; }
+  const c = Casa.conexion();
+  const aviso = (html) => {
+    const p = document.createElement('p');
+    p.className = 'casa-aviso';
+    p.innerHTML = html;
+    document.querySelector('main').prepend(p);
+  };
+  if (!(c.url && c.clave)) {
+    aviso('Este dispositivo no está conectado. <a href="../ajustes/">Conéctalo en Ajustes de Casa</a> con tu clave.');
+  } else if (permiso === 'ver') {
+    document.body.classList.add('solo-ver');
+    aviso('Modo solo lectura: puedes consultar el botiquín y los tratamientos, pero no cambiarlos.');
+  }
+  App.init();
+});
+</script>
+</body>
+</html>

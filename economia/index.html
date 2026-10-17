@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121214">
+  <script src="../comun/casa.js?v=9"></script>
+  <script>
+    // Casa: sin acceso, la sección no existe para esta persona; vuelve a la portada.
+    if (Casa.permiso('economia') === 'ninguno') location.replace(Casa.RAIZ);
+    // Estilo elegido en los Ajustes de Economía (no el de Casa); se aplica antes de pintar.
+    try {
+      if (localStorage.getItem('economia.theme') === 'light') {
+        document.documentElement.dataset.theme = 'light';
+        document.querySelector('meta[name="theme-color"]').content = '#f6f5f2';
+      } else {
+        delete document.documentElement.dataset.theme;
+      }
+    } catch { /* sin almacenamiento: oscuro */ }
+  </script>
+  <title>Economía familiar</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Casa: aviso de conexión y modo solo lectura */
+    .casa-aviso { margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45;
+      text-align: center; background: rgba(127, 127, 127, .16); }
+    .casa-aviso a { color: inherit; font-weight: 700; }
+    body.solo-ver .bottom-nav a.add,
+    body.solo-ver a[href$="/nuevo"],
+    body.solo-ver .file-btn,
+    body.solo-ver [data-action="demo"] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main id="app" aria-live="polite"></main>
+
+  <nav class="bottom-nav" id="nav" aria-label="Navegación principal">
+    <div class="tabs">
+      <a href="#/inicio" data-tab="inicio"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Resumen</span></a>
+      <a href="#/movimientos" data-tab="movimientos"><svg class="ic" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>Movimientos</span></a>
+      <a href="#/importar" data-tab="importar" class="add" aria-label="Añadir"><span class="add-btn"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></a>
+      <a href="#/fijos" data-tab="fijos"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M4 9h16M9 2v4M15 2v4M8 14l2 2 4-4"/></svg><span>Fijos</span></a>
+      <a href="#/presupuesto" data-tab="presupuesto"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 6"/></svg><span>Presupuesto</span></a>
+    </div>
+  </nav>
+
+  <div id="toast" role="status"></div>
+
+  <script>
+    // Casa: aviso de conexión o de solo lectura, fuera de #app para que no lo borre el repintado.
+    (function () {
+      var c = Casa.conexion(), p = Casa.permiso('economia'), html = '';
+      if (!(c.url && c.clave)) html = 'Este dispositivo no está conectado. <a href="../ajustes/">Conéctalo en Ajustes de Casa</a> con tu clave.';
+      else if (p === 'ver') { document.body.classList.add('solo-ver'); html = 'Modo solo lectura: puedes ver la economía de casa, pero los cambios no se guardan en Google.'; }
+      if (!html) return;
+      var el = document.createElement('p');
+      el.className = 'casa-aviso';
+      el.innerHTML = html;
+      document.body.insertBefore(el, document.getElementById('app'));
+    })();
+  </script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
