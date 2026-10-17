@@ -246,6 +246,22 @@ textarea.fc{height:auto;min-height:76px;padding:.75rem .875rem;resize:none}
 .mt3{margin-top:.75rem}
 .danger-txt{color:var(--danger)}
 </style>
+<script src="../comun/casa.js"></script>
+<style>
+/* Casa: aviso de acceso y modo solo lectura */
+.casa-aviso{margin:0 0 1rem;padding:.75rem 1rem;border-radius:12px;font-size:.875rem;line-height:1.45;background:#F1F5F9;color:#334155;text-align:center}
+.casa-aviso a{color:inherit;font-weight:700}
+body.solo-ver #fab,
+body.solo-ver #s-import,
+body.solo-ver #s-clear,
+body.solo-ver [onclick^="App.openMedModal"],
+body.solo-ver [onclick^="App.openTreatModal"],
+body.solo-ver [onclick^="App.openDoseModal"],
+body.solo-ver [onclick^="App.toggleSIGRE"],
+body.solo-ver [onclick^="App.delivered"],
+body.solo-ver [onclick^="App.delConfirm"]{display:none!important}
+body.solo-ver .tgl{pointer-events:none;opacity:.6}
+</style>
 </head>
 <body>
 <div id="app">
@@ -352,7 +368,7 @@ textarea.fc{height:auto;min-height:76px;padding:.75rem .875rem;resize:none}
       <div class="set-grp-ttl">Sincronización</div>
       <div class="set-item" id="s-gsheets">
         <div class="set-ico" style="background:#FEF9C3">🔗</div>
-        <div class="set-body"><div class="set-ttl">Google Sheets</div><div class="set-desc" id="gsheets-status">URL de Apps Script no configurada</div></div>
+        <div class="set-body"><div class="set-ttl">Conexión con Casa</div><div class="set-desc" id="gsheets-status">Este dispositivo no está conectado</div></div>
         <span class="set-arr">›</span>
       </div>
       <div class="set-item" id="s-sync" style="display:none">
@@ -563,15 +579,13 @@ textarea.fc{height:auto;min-height:76px;padding:.75rem .875rem;resize:none}
 <!-- Google Sheets -->
 <div class="overlay center" id="m-gsheets">
   <div class="modal">
-    <div class="modal-ttl">Google Sheets</div>
-    <p style="font-size:.875rem;color:var(--gray-500);margin-bottom:1rem;line-height:1.5">Ingresa la URL Web App de tu Google Apps Script para sincronizar datos.</p>
-    <div class="fg"><label>URL del Apps Script</label><input class="fc" id="gs-url" type="url" placeholder="https://script.google.com/…"></div>
-    <div class="f-hint">Publicar › Implementar como app web en Apps Script.</div>
+    <div class="modal-ttl">Conexión con Casa</div>
+    <p style="font-size:.875rem;color:var(--gray-500);margin-bottom:1rem;line-height:1.5">La conexión con tu Google Sheet se gestiona desde Casa, con tu clave. Desde aquí puedes comprobar que funciona.</p>
     <div id="gs-test-result" style="display:none;font-size:.8125rem;padding:.5rem .75rem;border-radius:8px;margin-top:.25rem"></div>
     <div class="modal-actions">
       <button class="btn btn-s" id="gs-test">Probar</button>
-      <button class="btn btn-s" id="gs-cancel">Cancelar</button>
-      <button class="btn btn-p" id="gs-save">Guardar</button>
+      <button class="btn btn-s" id="gs-cancel">Cerrar</button>
+      <a class="btn btn-p" href="../ajustes/" style="text-decoration:none;text-align:center">Ajustes de Casa</a>
     </div>
   </div>
 </div>
@@ -608,64 +622,34 @@ const App = (() => {
   //   • Content-Type:'text/plain;charset=utf-8' → mai 'application/json' (trenca CORS per preflight)
   //   • URL ha de ser /exec  → mai /dev (requereix autenticació)
   //   • Desplegament: Execute as Me · Who has access: Anyone (sense login)
+  // Casa: la URL y la clave vienen de Casa > Ajustes (comun/casa.js).
+  // Permiso de este dispositivo: 'editar', 'ver', 'ninguno' o null (sin conectar).
+  const PERMISO = Casa.permiso('botiquin');
+  const conectado = () => { const c = Casa.conexion(); return Boolean(c.url && c.clave); };
+
+  function ambTimeout(promesa) {
+    let t;
+    const limit = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('Tiempo de espera agotado (30s). Comprueba tu conexión.')), 30000); });
+    return Promise.race([promesa, limit]).finally(() => clearTimeout(t));
+  }
+
   const API = {
-    url: '',
+    // Verdadero si este dispositivo está conectado a Casa (antes: la URL del script).
+    get url() { return conectado(); },
 
-    _errMsg(err) {
-      if (err.name === 'AbortError') return 'Tiempo de espera agotado (30s). Comprueba tu conexión.';
-      if (err.message === 'Failed to fetch') return 'Error de red. Si usas iPhone/iPad: Ajustes › Safari › desactiva "Privacidad avanzada de seguimiento web".';
-      return err.message;
-    },
-
-    // GET — llança error si falla; el cridor ha de fer catch
+    // Lectura — llança error si falla; el cridor ha de fer catch
     async get(entitat, filtre = 'tots') {
       if (!this.url) return null;
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 30000);
-      try {
-        const res = await fetch(
-          `${this.url}?entitat=${entitat}&filtre=${filtre}`,
-          { redirect: 'follow', credentials: 'omit', cache: 'no-store', signal: ctrl.signal }
-        );
-        clearTimeout(timer);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const text = await res.text();
-        let d;
-        try { d = JSON.parse(text); }
-        catch { throw new Error('La respuesta no es JSON. Comprueba que el script usa ContentService.'); }
-        if (!d.ok) throw new Error('Script error: ' + (d.error || 'desconocido'));
-        return d.registres;
-      } catch (err) {
-        clearTimeout(timer);
-        throw new Error(this._errMsg(err));
-      }
+      const j = await ambTimeout(Casa.llamar('botiquin', 'llistar', { entitat, filtre }));
+      return j.datos.registres;
     },
 
-    // POST — llança error si falla; el cridor ha de fer catch
+    // Escriptura — mateix cos que abans (accio, entitat, id, camps…)
     async post(payload) {
       if (!this.url) return { ok: true };
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 30000);
-      try {
-        const res = await fetch(this.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload),
-          redirect: 'follow',
-          credentials: 'omit',
-          cache: 'no-store',
-          keepalive: true,
-          signal: ctrl.signal,
-        });
-        clearTimeout(timer);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const text = await res.text();
-        try { return JSON.parse(text); }
-        catch { throw new Error('Respuesta POST no es JSON'); }
-      } catch (err) {
-        clearTimeout(timer);
-        throw new Error(this._errMsg(err));
-      }
+      if (PERMISO === 'ver') throw new Error('Solo puedes ver el botiquín, no modificarlo.');
+      const j = await ambTimeout(Casa.llamar('botiquin', payload.accio, payload));
+      return Object.assign({ ok: true }, j.datos);
     },
 
     // Test ràpid de connexió: retorna { ok, n, error }
@@ -711,13 +695,12 @@ const App = (() => {
     S.meds    = JSON.parse(localStorage.getItem('mh_meds')   || '[]');
     S.treats  = JSON.parse(localStorage.getItem('mh_treats') || '[]');
     S.doses   = JSON.parse(localStorage.getItem('mh_doses')  || '[]');
-    S.gsUrl   = localStorage.getItem('mh_gs') || '';
+    S.gsUrl   = conectado() ? 'casa' : '';
   }
   function save() {
     localStorage.setItem('mh_meds',   JSON.stringify(S.meds));
     localStorage.setItem('mh_treats', JSON.stringify(S.treats));
     localStorage.setItem('mh_doses',  JSON.stringify(S.doses));
-    localStorage.setItem('mh_gs',     S.gsUrl);
   }
 
   // ── Utils ─────────────────────────────────────────────────
@@ -1415,18 +1398,14 @@ const App = (() => {
 
     // GSheets
     document.getElementById('s-gsheets').onclick = () => {
-      document.getElementById('gs-url').value = S.gsUrl;
+      document.getElementById('gs-test-result').style.display = 'none';
       document.getElementById('m-gsheets').classList.add('active');
     };
     document.getElementById('gs-cancel').onclick = () => closeM('m-gsheets');
     document.getElementById('gs-test').onclick = async () => {
-      const testUrl = document.getElementById('gs-url').value.trim();
       const el = document.getElementById('gs-test-result');
-      if (!testUrl) { el.style.display='block'; el.style.background='#FEF3C7'; el.style.color='#92400E'; el.textContent='Introduce una URL primero.'; return; }
       el.style.display='block'; el.style.background='#EFF6FF'; el.style.color='#1E40AF'; el.textContent='Probando conexión…';
-      const prev = API.url; API.url = testUrl;
       const r = await API.test();
-      API.url = prev;
       if (r.ok) {
         el.style.background='#ECFDF5'; el.style.color='#065F46';
         el.textContent = `✓ Conectado · ${r.n} medicamento${r.n !== 1 ? 's' : ''} en el Sheet`;
@@ -1434,17 +1413,6 @@ const App = (() => {
         el.style.background='#FEF2F2'; el.style.color='#991B1B';
         el.textContent = '✗ ' + r.error;
       }
-    };
-    document.getElementById('gs-save').onclick   = async () => {
-      const newUrl = document.getElementById('gs-url').value.trim();
-      S.gsUrl = newUrl;
-      API.url = newUrl;
-      localStorage.setItem('mh_gs', newUrl);
-      document.getElementById('gs-test-result').style.display = 'none';
-      document.getElementById('gsheets-status').textContent = newUrl ? 'URL configurada ✓' : 'URL no configurada';
-      document.getElementById('s-sync').style.display = newUrl ? 'flex' : 'none';
-      closeM('m-gsheets'); toast('URL guardada','ok');
-      if (newUrl) await syncFromAPI();
     };
     // s-sync: descarrega totes les dades de Google Sheets (substitueix local)
     document.getElementById('s-sync').onclick = () => syncFromAPI();
@@ -1465,10 +1433,8 @@ const App = (() => {
   async function init() {
     load();
     setupEvents();
-    API.url = S.gsUrl;
-
     if (S.gsUrl) {
-      document.getElementById('gsheets-status').textContent = 'URL configurada ✓';
+      document.getElementById('gsheets-status').textContent = 'Conectado a Casa ✓' + (PERMISO === 'ver' ? ' · solo ver' : '');
       document.getElementById('s-sync').style.display = 'flex';
       updateSIGREBadge();
       go('inicio');
@@ -1482,7 +1448,7 @@ const App = (() => {
         if (!document.hidden && S.gsUrl) syncFromAPI(true);
       });
     } else {
-      seed(); // únicament sense API URL
+      // Sense connexió a Casa no es carreguen dades d'exemple: es mostra l'avís.
       updateSIGREBadge();
       go('inicio');
     }
@@ -1491,7 +1457,25 @@ const App = (() => {
   return { init, openMedModal, openTreatModal, openDoseModal, delConfirm, toggleSIGRE, delivered, toggleActive, showSIGREReport };
 })();
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+  // Casa: sin acceso, la sección no existe para esta persona; vuelve a la portada.
+  const permiso = Casa.permiso('botiquin');
+  if (permiso === 'ninguno') { location.replace(Casa.RAIZ); return; }
+  const c = Casa.conexion();
+  const aviso = (html) => {
+    const p = document.createElement('p');
+    p.className = 'casa-aviso';
+    p.innerHTML = html;
+    document.querySelector('main').prepend(p);
+  };
+  if (!(c.url && c.clave)) {
+    aviso('Este dispositivo no está conectado. <a href="../ajustes/">Conéctalo en Ajustes de Casa</a> con tu clave.');
+  } else if (permiso === 'ver') {
+    document.body.classList.add('solo-ver');
+    aviso('Modo solo lectura: puedes consultar el botiquín y los tratamientos, pero no cambiarlos.');
+  }
+  App.init();
+});
 </script>
 </body>
 </html>

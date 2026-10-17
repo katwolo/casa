@@ -12,7 +12,7 @@
   // href: las secciones ya migradas abren su copia dentro de Casa; el resto, la web original.
   const SECCIONES = [
     { id: 'comidas', nombre: 'Planificación de comidas', emoji: '🍲', href: RAIZ + 'comidas/' },
-    { id: 'botiquin', nombre: 'Botiquín', emoji: '💊', href: 'https://katwolo.github.io/MediHome/' },
+    { id: 'botiquin', nombre: 'Botiquín', emoji: '💊', href: RAIZ + 'botiquin/' },
     { id: 'garaje', nombre: 'Garaje', emoji: '🔧', href: 'https://katwolo.github.io/garatge/' },
     { id: 'pesos', nombre: 'Registro de pesos', emoji: '⚖️', href: 'https://katwolo.github.io/registro-peso/' },
     { id: 'economia', nombre: 'Economía', emoji: '💶', href: 'https://katwolo.github.io/economia/' },
