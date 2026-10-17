@@ -11,7 +11,7 @@
 //   { ok: true, ... }  o  { ok: false, error, codigo }
 // =====================================================================
 
-const VERSION = '3';
+const VERSION = '4';
 
 // Secciones de casa, en el orden de la portada.
 const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', 'notes'];
@@ -68,6 +68,28 @@ function atender_(usuario, req) {
 
   exigirPermiso_(usuario, seccion, def.tipo);
   return { datos: def.fn(req.datos || {}, usuario) };
+}
+
+// ---------- Autorización ----------
+// Ejecútala a mano desde el editor (selecciónala arriba y pulsa ▶ Ejecutar)
+// cuando el script dé un error de permisos. Google mostrará la ventana para
+// autorizar el acceso a tus hojas y al correo. Después, publica una versión nueva.
+function autorizar() {
+  const props = PropertiesService.getScriptProperties();
+  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID'].forEach(function (p) {
+    const id = props.getProperty(p);
+    if (!id) {
+      console.log(p + ': falta la propiedad');
+      return;
+    }
+    try {
+      console.log(p + ': ' + SpreadsheetApp.openById(id).getName() + ' ✓');
+    } catch (e) {
+      console.log(p + ': no se puede abrir (' + e.message + ')');
+    }
+  });
+  console.log('Correo para avisos: ' + Session.getEffectiveUser().getEmail());
+  console.log('Cuota de correo restante hoy: ' + MailApp.getRemainingDailyQuota());
 }
 
 // ---------- Utilidades ----------

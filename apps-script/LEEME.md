@@ -57,3 +57,9 @@ Para añadir una sección: crea su archivo `.gs` en el proyecto, añade su propi
 ## Al cambiar los archivos de la web
 
 Los navegadores guardan una copia de `comun/casa.js`, `comun/estilo.css` y `ajustes/ajustes.js` durante un rato. Por eso las páginas los cargan con un número de versión (`casa.js?v=4`). Cada vez que cambie alguno de esos archivos, se sube ese número en todas las páginas, para que el navegador descargue la versión nueva.
+
+## Si sale un error de permisos («No tienes permiso para llamar a…»)
+
+1. Comprueba que `appsscript.json` del proyecto tiene la lista `oauthScopes` de este repositorio. Si una sección nueva necesita otro servicio de Google (por ejemplo Drive), se añade ahí.
+2. En el editor, elige la función `autorizar` en el desplegable de arriba y pulsa **▶ Ejecutar**. Acepta la ventana de permisos de Google. En el registro verás si puede abrir cada hoja.
+3. Publica una **nueva versión** de la implementación.
