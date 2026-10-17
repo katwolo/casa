@@ -3,7 +3,7 @@
 // Se carga en <head> para aplicar el tema antes de pintar la página.
 (function () {
   // URL /exec del script Casa. Si la pegas aquí, en Ajustes solo hará falta la clave.
-  const URL_POR_DEFECTO = '';
+  const URL_POR_DEFECTO = 'https://script.google.com/macros/s/AKfycbxHeT72S7BAxcLIu-ZVyvN9xunwag1T73wGWbzKHc2a3yHdWCDdi77FC7sLaP4Yxw/exec';
 
   const SECCIONES = [
     { id: 'comidas', nombre: 'Planificación de comidas', emoji: '🍲', href: 'https://katwolo.github.io/si_chef/' },
