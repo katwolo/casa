@@ -2,7 +2,7 @@ import { db } from './db.js';
 import { CATEGORIES, GROUPS, catById, categorize, conceptKey } from './categories.js';
 import { readFile } from './importer.js';
 import { monthlyBars, categoryBars, budgetMeter, bindTooltips, eur } from './charts.js';
-import { api, DEFAULT_URL, getConfig, setConfig, isConfigured, getTombstones, addTombstone, clearTombstones, resetTombstones } from './sync.js';
+import { api, DEFAULT_URL, getConfig, setConfig, isConfigured, permiso, getTombstones, addTombstone, clearTombstones, resetTombstones } from './sync.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const app = $('#app');
@@ -14,7 +14,7 @@ const esc = (s = '') =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Se muestra en Ajustes para saber qué versión tiene cada móvil (igual que CACHE en sw.js).
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 
 const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -761,17 +761,13 @@ function viewMore() {
     <div class="card stack">
       <h2>Google Sheets y Drive</h2>
       <p class="prose">Todo se guarda en vuestra hoja de cálculo (movimientos, gastos fijos, presupuesto, objetivos) y las fotos y PDF de los tickets en una carpeta de Drive.</p>
-      <form id="sync-form" class="form full" autocomplete="off">
-        ${DEFAULT_URL ? '' : `<label class="field"><span>URL de la aplicación web</span>
-          <input name="url" type="url" required placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url || '')}"></label>`}
-        <label class="field"><span>Clave (la propiedad TOKEN del script)</span>
-          <input name="token" type="password" required value="${esc(cfg.token || '')}"></label>
-        <div class="btn-row">
-          <button class="btn primary">${icon('cloud')} Guardar y sincronizar</button>
-          ${isConfigured() ? `<button type="button" class="btn" data-action="sync-now">Sincronizar ahora</button>
-            <button type="button" class="btn danger" data-action="sync-off">Desconectar</button>` : ''}
-        </div>
-      </form>
+      <p class="prose">${isConfigured()
+        ? 'Conectado a Casa' + (permiso() === 'ver' ? ': solo puedes ver, los cambios no se guardan en Google.' : '.')
+        : 'Este dispositivo no está conectado a Casa.'} La conexión y la clave se gestionan desde Casa.</p>
+      <div class="btn-row">
+        ${isConfigured() ? `<button type="button" class="btn" data-action="sync-now">Sincronizar ahora</button>` : ''}
+        <a class="btn primary" href="../ajustes/">Ajustes de Casa</a>
+      </div>
       <p class="prose" id="sync-status"></p>
     </div>
     <div class="card stack">
@@ -883,8 +879,9 @@ async function syncNow({ manual = false } = {}) {
   clearTimeout(syncTimer);
   updateSyncStatus('Sincronizando…');
   try {
+    const soloVer = permiso() === 'ver';
     // 1. Tickets nuevos → carpeta de Drive
-    for (const m of movs) {
+    for (const m of soloVer ? [] : movs) {
       if (!m.hasFile || m.driveId) continue;
       const blob = await db.get('blobs', m.id);
       if (!blob) continue;
@@ -897,8 +894,8 @@ async function syncNow({ manual = false } = {}) {
 
     // 2. Cambios → hoja de cálculo
     const lists = () => ({ movs, ...T });
-    const sent = Object.fromEntries(Object.entries(lists()).map(([k, l]) => [k, l.filter((r) => r.dirty).map(stripLocal)]));
-    const tombs = getTombstones();
+    const sent = Object.fromEntries(Object.entries(lists()).map(([k, l]) => [k, soloVer ? [] : l.filter((r) => r.dirty).map(stripLocal)]));
+    const tombs = soloVer ? [] : getTombstones();
     const body = {};
     for (const k of Object.keys(sent)) body[k] = [...sent[k], ...tombs.filter((t) => t.kind === k)];
     const res = await api('sync', body);
@@ -1206,11 +1203,6 @@ document.addEventListener('click', async (e) => {
   }
   if (action === 'open-file') openFile($('#mov-form').dataset.id);
   if (action === 'sync-now') syncNow({ manual: true });
-  if (action === 'sync-off') {
-    if (!confirm('¿Dejar de sincronizar este dispositivo? Vuestros datos en Google no se borran.')) return;
-    setConfig({ token: '', lastSync: 0, lastError: '' });
-    render();
-  }
   if (action === 'export') {
     const data = { app: 'economia', version: 3, movs: movs.map(stripLocal),
       ...Object.fromEntries(TABLES.map((k) => [k, T[k].map(stripLocal)])) };
@@ -1367,18 +1359,6 @@ document.addEventListener('submit', async (e) => {
     store.set('economia.me', data.me || '');
     toast('Guardado');
     render();
-  }
-  if (f.id === 'sync-form') {
-    // Con la URL integrada en sync.js solo hace falta la clave.
-    const url = DEFAULT_URL || f.url.value.trim();
-    const token = f.token.value.trim();
-    if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { toast('La URL debe ser la de tu script de Google (…/exec)'); return; }
-    const first = !getConfig().token;
-    setConfig({ url, token, lastError: '' });
-    // Primera vez: hay que subir todo lo que ya existe en este dispositivo.
-    if (first) [movs, ...TABLES.map((k) => T[k])].forEach((l) => l.forEach((r) => (r.dirty = true)));
-    await syncNow({ manual: true });
-    if (location.hash === '#/mas') render();
   }
   if (f.id === 'budget-form') {
     for (const [k, v] of new FormData(f)) {

@@ -1,6 +1,6 @@
 // Red primero, caché como respaldo: la app funciona sin conexión.
 // Al publicar cambios, sube el número (y APP_VERSION en app.js).
-const CACHE = 'economia-v6';
+const CACHE = 'economia-v7';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'db.js', 'categories.js', 'importer.js', 'charts.js', 'sync.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

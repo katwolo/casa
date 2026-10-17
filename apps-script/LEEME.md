@@ -12,6 +12,7 @@ Un único proyecto de Apps Script para todas las secciones de Casa. Controla qui
 | `botiquin.gs` | Sección Botiquín: medicamentos, tratamientos y dosis. |
 | `pesos.gs` | Sección Pesos: perfiles y registros de peso. |
 | `garaje.gs` | Sección Garaje: vehículos, registros y facturas en Drive (con lectura OCR). |
+| `economia.gs` | Sección Economía: movimientos, gastos fijos, presupuestos, objetivos y tickets en Drive. |
 | `appsscript.json` | Configuración del proyecto (zona horaria y publicación como app web). |
 
 ## Instalación (una sola vez)
@@ -41,6 +42,8 @@ Si quieres no tener que pegar la URL en cada dispositivo, ponla también en `com
 | `PESOS_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de pesos (la misma que usa registro-peso). |
 | `GARAJE_SS_ID` | Tú, a mano | ID de la hoja «Garatge · Base de dades» (`SS_ID` en el script original de garatge). |
 | `GARAJE_ROOT_ID` | Tú, a mano | ID de la carpeta de Drive «Garatge · Vehicles» (`ROOT_ID` en el script original de garatge). |
+| `ECONOMIA_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de economía. |
+| `ECONOMIA_FOLDER_ID` | Tú, a mano | ID de la carpeta de tickets «Economía familiar - tickets» (`FOLDER_ID` en el script original). |
 | `CLAVE_PAREJA` | Ajustes | Clave de tu pareja. Se crea, cambia o quita desde Ajustes. |
 | `PERMISOS_PAREJA` | Ajustes | Ninguno / ver / editar en cada sección. |
 | `AVISO_EMAIL` | Ajustes | `si` para recibir un correo si alguien usa una clave incorrecta (como mucho uno por hora). |
@@ -58,6 +61,7 @@ Pega los archivos nuevos y haz **Implementar → Gestionar implementaciones → 
 | Botiquín | `botiquin.gs` | `BOTIQUIN_SPREADSHEET_ID` | Usa la misma hoja que la web original MediHome (pestañas Medicaments, Tractaments y Dosis). |
 | Pesos | `pesos.gs` | `PESOS_SPREADSHEET_ID` | Usa la misma hoja que la web original registro-peso. Las fechas se leen y escriben en la zona horaria de la propia hoja, para que no cambien de día. |
 | Garaje | `garaje.gs` | `GARAJE_SS_ID` y `GARAJE_ROOT_ID` | Usa la misma hoja y la misma carpeta de facturas que la web original garatge. A diferencia del original, no crea nada si faltan los IDs: muestra un error. Necesita los permisos de Drive y de conexiones externas (para leer facturas). |
+| Economía | `economia.gs` | `ECONOMIA_SPREADSHEET_ID` y `ECONOMIA_FOLDER_ID` | Usa la misma hoja y la misma carpeta de tickets que la web original. No crea nada si faltan los IDs. Con permiso de solo ver, la sincronización devuelve los datos pero ignora lo que envía el móvil. **El script original debe seguir dentro de la hoja**: su función `onEdit` marca las filas que editas a mano para que lleguen a la app, y eso solo funciona desde un script que vive en la hoja. |
 
 Para añadir una sección: crea su archivo `.gs` en el proyecto, añade su propiedad con el ID de la hoja y publica una **nueva versión**. La primera vez que una sección use un servicio nuevo de Google (Sheets, Drive…), el editor te pedirá autorizarlo.
 

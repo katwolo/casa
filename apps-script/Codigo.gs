@@ -11,7 +11,7 @@
 //   { ok: true, ... }  o  { ok: false, error, codigo }
 // =====================================================================
 
-const VERSION = '6';
+const VERSION = '7';
 
 // Secciones de casa, en el orden de la portada.
 const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', 'notes'];
@@ -26,6 +26,7 @@ function seccionesMigradas_() {
     botiquin: SECCION_BOTIQUIN,
     pesos: SECCION_PESOS,
     garaje: SECCION_GARAJE,
+    economia: SECCION_ECONOMIA,
   };
 }
 
@@ -78,7 +79,7 @@ function atender_(usuario, req) {
 // autorizar el acceso a tus hojas y al correo. Después, publica una versión nueva.
 function autorizar() {
   const props = PropertiesService.getScriptProperties();
-  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID', 'PESOS_SPREADSHEET_ID', 'GARAJE_SS_ID'].forEach(function (p) {
+  ['COMIDAS_SPREADSHEET_ID', 'BOTIQUIN_SPREADSHEET_ID', 'PESOS_SPREADSHEET_ID', 'GARAJE_SS_ID', 'ECONOMIA_SPREADSHEET_ID'].forEach(function (p) {
     const id = props.getProperty(p);
     if (!id) {
       console.log(p + ': falta la propiedad');
@@ -90,15 +91,18 @@ function autorizar() {
       console.log(p + ': no se puede abrir (' + e.message + ')');
     }
   });
-  const carpeta = props.getProperty('GARAJE_ROOT_ID');
-  if (!carpeta) console.log('GARAJE_ROOT_ID: falta la propiedad');
-  else {
-    try {
-      console.log('GARAJE_ROOT_ID: ' + DriveApp.getFolderById(carpeta).getName() + ' ✓');
-    } catch (e) {
-      console.log('GARAJE_ROOT_ID: no se puede abrir (' + e.message + ')');
+  ['GARAJE_ROOT_ID', 'ECONOMIA_FOLDER_ID'].forEach(function (p) {
+    const carpeta = props.getProperty(p);
+    if (!carpeta) {
+      console.log(p + ': falta la propiedad');
+      return;
     }
-  }
+    try {
+      console.log(p + ': ' + DriveApp.getFolderById(carpeta).getName() + ' ✓');
+    } catch (e) {
+      console.log(p + ': no se puede abrir (' + e.message + ')');
+    }
+  });
   // Garaje lee las facturas con el OCR de Drive a través de una conexión externa.
   try {
     UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user', {

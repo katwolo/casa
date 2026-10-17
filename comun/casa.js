@@ -15,7 +15,7 @@
     { id: 'botiquin', nombre: 'Botiquín', emoji: '💊', href: RAIZ + 'botiquin/' },
     { id: 'garaje', nombre: 'Garaje', emoji: '🔧', href: RAIZ + 'garaje/' },
     { id: 'pesos', nombre: 'Registro de pesos', emoji: '⚖️', href: RAIZ + 'pesos/' },
-    { id: 'economia', nombre: 'Economía', emoji: '💶', href: 'https://katwolo.github.io/economia/' },
+    { id: 'economia', nombre: 'Economía', emoji: '💶', href: RAIZ + 'economia/' },
     { id: 'notes', nombre: 'Notes', emoji: '📝', href: 'https://katwolo.github.io/diario/#/crear' },
   ];
   const IDS = SECCIONES.map(function (s) { return s.id; });
