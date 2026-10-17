@@ -5,8 +5,13 @@
   // URL /exec del script Casa. Si la pegas aquí, en Ajustes solo hará falta la clave.
   const URL_POR_DEFECTO = 'https://script.google.com/macros/s/AKfycbxHeT72S7BAxcLIu-ZVyvN9xunwag1T73wGWbzKHc2a3yHdWCDdi77FC7sLaP4Yxw/exec';
 
+  // Raíz de Casa, calculada a partir de este archivo (comun/casa.js), para que
+  // los enlaces funcionen igual desde la portada, Ajustes o una sección.
+  const RAIZ = new URL('../', document.currentScript.src).href;
+
+  // href: las secciones ya migradas abren su copia dentro de Casa; el resto, la web original.
   const SECCIONES = [
-    { id: 'comidas', nombre: 'Planificación de comidas', emoji: '🍲', href: 'https://katwolo.github.io/si_chef/' },
+    { id: 'comidas', nombre: 'Planificación de comidas', emoji: '🍲', href: RAIZ + 'comidas/' },
     { id: 'botiquin', nombre: 'Botiquín', emoji: '💊', href: 'https://katwolo.github.io/MediHome/' },
     { id: 'garaje', nombre: 'Garaje', emoji: '🔧', href: 'https://katwolo.github.io/garatge/' },
     { id: 'pesos', nombre: 'Registro de pesos', emoji: '⚖️', href: 'https://katwolo.github.io/registro-peso/' },
@@ -116,6 +121,7 @@
   }
 
   window.Casa = {
+    RAIZ: RAIZ,
     SECCIONES: SECCIONES,
     conexion: conexion,
     guardarConexion: guardarConexion,

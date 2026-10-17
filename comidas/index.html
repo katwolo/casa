@@ -311,6 +311,22 @@
 
   .shop-actions{ display:flex; gap:8px; margin-top:10px; margin-bottom:18px; }
 
+  /* Casa: aviso de acceso y modo solo lectura */
+  .casa-aviso{
+    margin:0 0 14px; padding:10px 14px; border-radius:12px; font-size:14px; line-height:1.4;
+    background:rgba(0,0,0,.05); text-align:center;
+  }
+  .casa-aviso a{ color:inherit; font-weight:700; }
+  body.solo-ver .recipe-form,
+  body.solo-ver #randomWeekBtn,
+  body.solo-ver .add-extra,
+  body.solo-ver #addExtraBtn,
+  body.solo-ver .shop-actions,
+  body.solo-ver .edit-btn,
+  body.solo-ver .del-btn,
+  body.solo-ver #shopList .del{ display:none !important; }
+  body.solo-ver #daysContainer select,
+  body.solo-ver #shopList input[type=checkbox]{ pointer-events:none; }
   .loading-overlay{
     position:fixed; inset:0; background:var(--paper); display:flex; align-items:center; justify-content:center;
     flex-direction:column; gap:10px; z-index:100; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:13px;
@@ -350,6 +366,7 @@
     .ing-row .cat-select{ grid-column: span 2; }
   }
 </style>
+<script src="../comun/casa.js"></script>
 </head>
 <body>
 
@@ -462,18 +479,15 @@
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal">
     <h3>Ajustes</h3>
-    <p class="modal-hint">URL de Apps Script (termina en <code>/exec</code>) para sincronizar con tu Google Sheet.</p>
-    <div class="field">
-      <label for="gsUrlInput">URL del Apps Script</label>
-      <input type="text" id="gsUrlInput" placeholder="https://script.google.com/macros/s/…/exec">
-    </div>
+    <p class="modal-hint">La conexión con tu Google Sheet se gestiona desde Casa, con tu clave. Desde aquí puedes comprobar que funciona.</p>
+    <p class="modal-hint" id="casaEstado"></p>
     <div id="gsTestResult" class="test-result" style="display:none;"></div>
     <div class="form-actions">
       <button class="btn btn-ghost btn-block" id="gsTestBtn">Probar conexión</button>
     </div>
     <div class="form-actions" style="margin-top:8px;">
-      <button class="btn btn-ghost" id="gsCancelBtn" style="flex:1;">Cancelar</button>
-      <button class="btn btn-primary" id="gsSaveBtn" style="flex:1;">Guardar</button>
+      <button class="btn btn-ghost" id="gsCancelBtn" style="flex:1;">Cerrar</button>
+      <a class="btn btn-primary" id="casaAjustesBtn" href="../ajustes/" style="flex:1; text-align:center; text-decoration:none;">Ajustes de Casa</a>
     </div>
   </div>
 </div>
@@ -505,22 +519,20 @@
     weekStart: getMonday(new Date()),
     weekPlan: {},      // { Lunes: {comida: id|null, cena: id|null}, ... }
     extras: [],         // [{id,name,qty,unit,cat}]
-    checked: {},        // { key: bool }
-    gsUrl: ''
+    checked: {}         // { key: bool }
   };
   let editingRecipeId = null;
   let ingRowCount = 0;
   let recipeSearchQuery = '';
 
-  // URL de Apps Script que ya funciona hoy: sirve como valor por defecto la
-  // primera vez que se abre la app en un dispositivo, antes de que el
-  // usuario configure nada en Ajustes.
-  const DEFAULT_GS_URL = 'https://script.google.com/macros/s/AKfycbxhTf6Uc9OOFclFR4lYgXsO2KTygkJYKrL3NSo2ElDWXMv7o9880tY90bSzPLb5B-jy/exec';
+  // Casa: la URL y la clave vienen de Casa > Ajustes (comun/casa.js).
+  // Permiso de este dispositivo en Comidas: 'editar', 'ver', 'ninguno' o null (sin conectar).
+  const PERMISO = Casa.permiso('comidas');
+  const conectado = () => { const c = Casa.conexion(); return Boolean(c.url && c.clave); };
 
   // ---------- caché local ----------
   const CACHE_RECIPES = 'sc_recipes';
   const CACHE_WEEKS = 'sc_weeks';
-  const CACHE_URL = 'sc_gs';
   const CACHE_LASTWEEK = 'sc_lastWeek';
 
   function loadCache(){
@@ -528,7 +540,6 @@
       const r = JSON.parse(localStorage.getItem(CACHE_RECIPES));
       if(Array.isArray(r)) state.recipes = r;
     }catch(e){}
-    state.gsUrl = localStorage.getItem(CACHE_URL) || DEFAULT_GS_URL;
     // state.weekStart ya se inicializó con la semana actual (getMonday(new Date())).
     // Ya no se sobrescribe con la última semana vista, para que la app siempre
     // abra mostrando la semana en curso.
@@ -586,70 +597,22 @@
     showToast._t = setTimeout(()=>t.classList.remove('show'), 1600);
   }
 
-  // ---------- API: puente frontend -> backend ----------
-  // fetch() contra la URL de Apps Script configurada (Ajustes o el valor por
-  // defecto). Funciona igual desde GitHub Pages que desde la propia URL de
-  // Apps Script. POST con Content-Type text/plain para evitar el preflight
-  // CORS (Apps Script no responde bien a peticiones OPTIONS).
+  // ---------- API: puente frontend -> script Casa ----------
+  // Todas las llamadas pasan por Casa.llamar (comun/casa.js), que añade la
+  // clave de este dispositivo. El script Casa comprueba el permiso.
+  const LECTURAS = ['getRecipes', 'refreshRecipesCache', 'getWeekPlan', 'getShoppingExtras', 'getShoppingChecked'];
   const API = {
-    get url(){ return state.gsUrl; },
-
-    _errMsg(err){
-      if(err.name === 'AbortError') return 'Tiempo de espera agotado (30s). Comprueba tu conexión.';
-      if(err.message === 'Failed to fetch') return 'No se ha podido conectar. Revisa la URL en Ajustes y tu conexión a internet.';
-      return err.message;
-    },
-
-    async _fetch(url, options){
-      const ctrl = new AbortController();
-      const timer = setTimeout(()=>ctrl.abort(), 30000);
-      try{
-        const res = await fetch(url, Object.assign({ redirect:'follow', credentials:'omit', cache:'no-store', signal: ctrl.signal }, options));
-        clearTimeout(timer);
-        if(!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const text = await res.text();
-        let data;
-        try{ data = JSON.parse(text); }
-        catch(e){ throw new Error('Respuesta inesperada del servidor.'); }
-        if(data && data.error) throw new Error(data.error);
-        return data;
-      }catch(err){
-        clearTimeout(timer);
-        throw new Error(this._errMsg(err));
+    async call(action, payload){
+      if(!LECTURAS.includes(action) && PERMISO === 'ver'){
+        throw new Error('Solo puedes ver Comidas, no modificarla.');
       }
+      const ctrl = new Promise((_, reject)=>setTimeout(()=>reject(new Error('Tiempo de espera agotado (30s). Comprueba tu conexión.')), 30000));
+      const j = await Promise.race([Casa.llamar('comidas', action, payload || {}), ctrl]);
+      return j.datos;
     },
-
-    get(action, params){
-      if(!this.url) return Promise.reject(new Error('Falta configurar la URL de Apps Script en Ajustes.'));
-      const url = new URL(this.url);
-      url.searchParams.set('action', action);
-      Object.keys(params || {}).forEach(k=>{
-        if(params[k] !== undefined && params[k] !== null) url.searchParams.set(k, params[k]);
-      });
-      return this._fetch(url.toString());
-    },
-
-    post(action, payload){
-      if(!this.url) return Promise.reject(new Error('Falta configurar la URL de Apps Script en Ajustes.'));
-      return this._fetch(this.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, payload }),
-        keepalive: true
-      });
-    },
-
-    async test(urlOverride){
-      const prevUrl = state.gsUrl;
-      if(urlOverride !== undefined) state.gsUrl = urlOverride;
-      try{
-        await this.get('getRecipes', {});
-        return { ok: true };
-      }catch(err){
-        return { ok: false, error: err.message };
-      }finally{
-        state.gsUrl = prevUrl;
-      }
+    async test(){
+      try{ await this.call('getRecipes'); return { ok: true }; }
+      catch(err){ return { ok: false, error: err.message }; }
     }
   };
 
@@ -658,31 +621,31 @@
   function gasRun(fnName, ...args){
     switch(fnName){
       case 'getRecipes':
-        return API.get('getRecipes', {});
+        return API.call('getRecipes', {});
       case 'getWeekPlan':
-        return API.get('getWeekPlan', { weekId: args[0] });
+        return API.call('getWeekPlan', { weekId: args[0] });
       case 'getShoppingExtras':
-        return API.get('getShoppingExtras', { weekId: args[0] });
+        return API.call('getShoppingExtras', { weekId: args[0] });
       case 'getShoppingChecked':
-        return API.get('getShoppingChecked', { weekId: args[0] });
+        return API.call('getShoppingChecked', { weekId: args[0] });
       case 'saveRecipe':
-        return API.post('saveRecipe', { recipe: args[0] });
+        return API.call('saveRecipe', { recipe: args[0] });
       case 'deleteRecipeById':
-        return API.post('deleteRecipeById', { id: args[0] });
+        return API.call('deleteRecipeById', { id: args[0] });
       case 'refreshRecipesCache':
-        return API.post('refreshRecipesCache', {});
+        return API.call('refreshRecipesCache', {});
       case 'setWeekPlanCell':
-        return API.post('setWeekPlanCell', { weekId: args[0], dia: args[1], meal: args[2], recipeId: args[3] });
+        return API.call('setWeekPlanCell', { weekId: args[0], dia: args[1], meal: args[2], recipeId: args[3] });
       case 'setWeekPlan':
-        return API.post('setWeekPlan', { weekId: args[0], plan: args[1] });
+        return API.call('setWeekPlan', { weekId: args[0], plan: args[1] });
       case 'addShoppingExtra':
-        return API.post('addShoppingExtra', { weekId: args[0], item: args[1] });
+        return API.call('addShoppingExtra', { weekId: args[0], item: args[1] });
       case 'deleteShoppingExtra':
-        return API.post('deleteShoppingExtra', { weekId: args[0], extraId: args[1] });
+        return API.call('deleteShoppingExtra', { weekId: args[0], extraId: args[1] });
       case 'setShoppingChecked':
-        return API.post('setShoppingChecked', { weekId: args[0], itemKey: args[1], value: args[2] });
+        return API.call('setShoppingChecked', { weekId: args[0], itemKey: args[1], value: args[2] });
       case 'clearShoppingChecked':
-        return API.post('clearShoppingChecked', { weekId: args[0] });
+        return API.call('clearShoppingChecked', { weekId: args[0] });
       default:
         return Promise.reject(new Error('Acción no soportada: ' + fnName));
     }
@@ -715,12 +678,11 @@
       document.getElementById('loading').style.display = 'none';
     }
 
-    if(!state.gsUrl){
+    if(!conectado()){
       if(!hasCache){
         renderAll();
         document.getElementById('loading').style.display = 'none';
       }
-      showToast('Configura la URL de Apps Script en Ajustes ⚙️');
       return;
     }
 
@@ -962,13 +924,12 @@
       state.checked = cached.checked;
       renderAll();
       localStorage.setItem(CACHE_LASTWEEK, weekId(state.weekStart));
-      if(state.gsUrl) loadWeekData().then(renderAll).catch(()=>{});
+      if(conectado()) loadWeekData().then(renderAll).catch(()=>{});
       return;
     }
-    if(!state.gsUrl){
+    if(!conectado()){
       state.weekPlan = emptyPlan();
       renderAll();
-      showToast('Configura la URL de Apps Script en Ajustes ⚙️');
       return;
     }
     document.getElementById('loading').style.display='flex';
@@ -1356,7 +1317,10 @@
 
   // ---------- AJUSTES ----------
   function openSettings(){
-    document.getElementById('gsUrlInput').value = state.gsUrl || '';
+    const c = Casa.conexion();
+    document.getElementById('casaEstado').textContent = !conectado()
+      ? 'Este dispositivo no está conectado a Casa.'
+      : 'Conectado a Casa' + (PERMISO === 'ver' ? ' · solo puedes ver' : '') + '.';
     document.getElementById('gsTestResult').style.display = 'none';
     document.getElementById('settingsOverlay').classList.add('active');
   }
@@ -1371,31 +1335,32 @@
   });
 
   document.getElementById('gsTestBtn').addEventListener('click', async ()=>{
-    const url = document.getElementById('gsUrlInput').value.trim();
     const resultEl = document.getElementById('gsTestResult');
     resultEl.style.display = 'block';
     resultEl.className = 'test-result';
     resultEl.textContent = 'Probando…';
-    const r = await API.test(url);
+    const r = await API.test();
     resultEl.classList.add(r.ok ? 'ok' : 'err');
     resultEl.textContent = r.ok ? '✓ Conexión correcta' : ('✕ ' + r.error);
   });
 
-  document.getElementById('gsSaveBtn').addEventListener('click', ()=>{
-    const url = document.getElementById('gsUrlInput').value.trim();
-    state.gsUrl = url;
-    localStorage.setItem(CACHE_URL, url);
-    closeSettings();
-    showToast('URL guardada');
-    if(!url) return;
-    document.getElementById('loading').style.display = 'flex';
-    syncFromNetwork(true).then(()=>{
-      document.getElementById('loading').style.display = 'none';
-    }).catch(e=>{
-      document.getElementById('loading').style.display = 'none';
-      showToast('No se ha podido conectar: ' + e.message);
-    });
-  });
+  // ---------- Casa: acceso ----------
+  // Sin acceso: la sección no existe para esta persona; vuelve a la portada.
+  if(PERMISO === 'ninguno'){
+    location.replace(Casa.RAIZ);
+  }
+  function avisoCasa(html){
+    const p = document.createElement('p');
+    p.className = 'casa-aviso';
+    p.innerHTML = html;
+    document.querySelector('main').prepend(p);
+  }
+  if(!conectado()){
+    avisoCasa('Este dispositivo no está conectado. <a href="../ajustes/">Conéctalo en Ajustes de Casa</a> con tu clave.');
+  } else if(PERMISO === 'ver'){
+    document.body.classList.add('solo-ver');
+    avisoCasa('Modo solo lectura: puedes ver el menú, las recetas y la lista, pero no cambiarlos.');
+  }
 
   init();
 })();

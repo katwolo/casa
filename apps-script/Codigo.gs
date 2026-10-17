@@ -11,7 +11,7 @@
 //   { ok: true, ... }  o  { ok: false, error, codigo }
 // =====================================================================
 
-const VERSION = '1';
+const VERSION = '2';
 
 // Secciones de casa, en el orden de la portada.
 const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', 'notes'];
@@ -22,7 +22,7 @@ const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', '
 // Al migrar una sección, añádela aquí.
 function seccionesMigradas_() {
   return {
-    // comidas: SECCION_COMIDAS,
+    comidas: SECCION_COMIDAS,
   };
 }
 
