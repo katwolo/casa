@@ -28,9 +28,10 @@ const SECCION_ECONOMIA = (function () {
 
   const MAX_CELL = 49000; // Sheets admite 50.000 caracteres por celda
 
-  // Las mismas categorías que categories.js (si añades una allí, añádela aquí).
-  // [nombre, grupo]
-  const CATEGORIAS = {
+  // Categorías de serie: las mismas que categories.js. [nombre, grupo]
+  // Desde la app se pueden cambiar, quitar o añadir: esos cambios van en la pestaña «Categorías»
+  // y se aplican encima de estas al sincronizar (ver aplicarCategorias_).
+  const CATEGORIAS_BASE = {
     casa: ['Alquiler o hipoteca', 'fijo'],
     comunidad: ['Comunidad e IBI', 'fijo'],
     suministros: ['Luz, agua, gas e internet', 'fijo'],
@@ -52,6 +53,10 @@ const SECCION_ECONOMIA = (function () {
     nomina: ['Nómina', 'ingreso'],
     otros_ingresos: ['Otros ingresos', 'ingreso'],
   };
+  // Categorías en uso (las de serie con los cambios de la pestaña «Categorías»).
+  let CATEGORIAS = Object.assign({}, CATEGORIAS_BASE);
+  // Nombres que se reconocen al leer la hoja (incluidos los de antes de un cambio de nombre).
+  let NOMBRES_CAT_ = {};
   // Nombres de la versión anterior, para leer bien las hojas antiguas.
   const NOMBRES_ANTIGUOS = {
     supermercado: 'super', vivienda: 'casa', 'transporte y coche': 'transporte', salud: 'salud',
@@ -110,6 +115,7 @@ const SECCION_ECONOMIA = (function () {
         ['start', 'Primer mes (aaaa-mm)'],
         ['who', 'Quién', 'who'],
         ['match', 'Concepto en el banco'],
+        ['generated', 'Cobros creados hasta (aaaa-mm)'],
         ['modified', 'Modificado', 'readable'],
         ['id', 'ID'],
         ['createdAt', 'Creado', 'num'],
@@ -151,6 +157,23 @@ const SECCION_ECONOMIA = (function () {
         ['deleted', 'Borrado', 'bool'],
       ],
     },
+    // Categorías cambiadas, quitadas o añadidas desde la app (las de serie que no aparecen aquí
+    // se usan tal cual). Grupo: fijo, variable, ahorro o ingreso.
+    categories: {
+      sheet: 'Categorías',
+      // Quitar una categoría de serie es un registro nuevo ya borrado: hay que guardarlo igual.
+      keepDeleted: true,
+      cols: [
+        ['id', 'ID'],
+        ['name', 'Nombre'],
+        ['emoji', 'Icono'],
+        ['group', 'Grupo'],
+        ['modified', 'Modificado', 'readable'],
+        ['createdAt', 'Creado', 'num'],
+        ['updatedAt', 'Actualizado', 'num'],
+        ['deleted', 'Borrado', 'bool'],
+      ],
+    },
     // Movimientos del banco que la app no ha podido clasificar solos (posibles repetidos o
     // posibles pagos de un gasto fijo). Se revisan uno a uno en la app. Los descartados se
     // quedan con "Resuelto: descartado" para no volver a preguntar si se sube el mismo extracto.
@@ -184,10 +207,55 @@ const SECCION_ECONOMIA = (function () {
     // Primero los ajustes, para tener los nombres de los dos al escribir la columna "Quién".
     const out = { settings: mergeTable_('settings', req.settings || []) };
     names_(out.settings);
+    // Luego las categorías: se leen las filas con los nombres de antes y se escriben con los nuevos.
+    const antes = readRecords_(TABLES.categories, table_('categories'));
+    out.categories = mergeTable_('categories', req.categories || []);
+    const renombradas = aplicarCategorias_(antes, out.categories);
     Object.keys(TABLES).forEach((key) => {
-      if (key !== 'settings') out[key] = mergeTable_(key, req[key] || []);
+      if (key === 'settings' || key === 'categories') return;
+      const conCategoria = TABLES[key].cols.some((c) => c[2] === 'cat');
+      out[key] = mergeTable_(key, req[key] || [], renombradas && conCategoria);
     });
     return out;
+  }
+
+  // Categorías en uso a partir de los registros de la pestaña «Categorías».
+  function construirCategorias_(records) {
+    const cats = Object.assign({}, CATEGORIAS_BASE);
+    (records || []).forEach((r) => {
+      if (!r || !r.id) return;
+      if (r.deleted) { delete cats[r.id]; return; }
+      const base = CATEGORIAS_BASE[r.id] || ['', 'variable'];
+      const grupo = GRUPOS[r.group] ? r.group : base[1];
+      cats[r.id] = [String(r.name || base[0] || r.id).trim(), grupo];
+    });
+    // «Otros gastos» y «Otros ingresos» siempre existen: son el destino por defecto.
+    ['otros', 'otros_ingresos'].forEach((k) => { if (!cats[k]) cats[k] = CATEGORIAS_BASE[k]; });
+    return cats;
+  }
+
+  // Aplica las categorías de la hoja. Devuelve true si alguna ha cambiado de nombre o de grupo,
+  // para reescribir las pestañas que muestran el nombre de la categoría.
+  function aplicarCategorias_(antes, despues) {
+    const viejas = construirCategorias_(antes);
+    CATEGORIAS = construirCategorias_(despues);
+    NOMBRES_CAT_ = {};
+    [CATEGORIAS_BASE, viejas, CATEGORIAS].forEach((mapa) => {
+      Object.keys(mapa).forEach((id) => { NOMBRES_CAT_[mapa[id][0].toLowerCase()] = id; });
+    });
+    return Object.keys(Object.assign({}, viejas, CATEGORIAS)).some((id) =>
+      !viejas[id] || !CATEGORIAS[id] || viejas[id][0] !== CATEGORIAS[id][0] || viejas[id][1] !== CATEGORIAS[id][1]);
+  }
+
+  // Para las lecturas que no pasan por sync_ (por ejemplo, Gemini).
+  // Si no se puede leer la hoja, se quedan las de serie: leer un ticket no debe fallar por esto.
+  function cargarCategorias_() {
+    try {
+      const recs = readRecords_(TABLES.categories, table_('categories'));
+      aplicarCategorias_(recs, recs);
+    } catch (e) {
+      console.warn('Categorías de serie: ' + e.message);
+    }
   }
 
   // Nombres de las dos personas (pestaña Ajustes, filas p1 y p2).
@@ -203,20 +271,21 @@ const SECCION_ECONOMIA = (function () {
   }
 
   // Une lo que llega con lo que hay en la hoja: gana la versión más reciente.
-  function mergeTable_(key, incoming) {
+  // forzar: reescribe la pestaña aunque no lleguen cambios (por ejemplo, al renombrar una categoría).
+  function mergeTable_(key, incoming, forzar) {
     const sh = table_(key);
     const t = TABLES[key];
     const records = readRecords_(t, sh);
     const outdated = !headerOk_(t, sh); // hoja de una versión anterior: se reescribe entera
     const index = {};
     records.forEach((r, i) => (index[r.id] = i));
-    let changed = outdated;
+    let changed = outdated || Boolean(forzar);
 
     incoming.forEach((rec) => {
       if (!rec || !rec.id) return;
       const i = index[rec.id];
       if (i === undefined) {
-        if (rec.deleted) return;
+        if (rec.deleted && !t.keepDeleted) return;
         index[rec.id] = records.push(pick_(t, rec)) - 1;
         changed = true;
         return;
@@ -350,10 +419,12 @@ const SECCION_ECONOMIA = (function () {
 
   // "Supermercado", "supermercado" o "super" -> "super". Lo que no se reconoce va a "Otros gastos".
   function catId_(v) {
-    const s = String(v || '').trim().toLowerCase();
+    const raw = String(v || '').trim();
+    if (CATEGORIAS[raw]) return raw;
+    const s = raw.toLowerCase();
     if (CATEGORIAS[s]) return s;
     const k = Object.keys(CATEGORIAS).find((id) => CATEGORIAS[id][0].toLowerCase() === s);
-    return k || NOMBRES_ANTIGUOS[s] || 'otros';
+    return k || NOMBRES_CAT_[s] || NOMBRES_ANTIGUOS[s] || 'otros';
   }
 
   // "Ana" o "p1" -> "p1"; "Los dos" o un nombre desconocido -> "comun"; vacío -> def.
@@ -431,6 +502,7 @@ const SECCION_ECONOMIA = (function () {
   // Devuelve { texto, tipo: 'ticket' | 'extracto', ticket, movimientos }.
   // Si falla, la web lee la imagen con el lector del móvil como antes.
   function leerDocumento_(p) {
+    cargarCategorias_();
     const cats = Object.keys(CATEGORIAS).map(function (k) { return k + ' (' + CATEGORIAS[k][0] + ')'; }).join(', ');
     const prompt = [
       'Eres un asistente que lee documentos de la economía de una casa: tickets, facturas y extractos de cuentas o tarjetas.',
