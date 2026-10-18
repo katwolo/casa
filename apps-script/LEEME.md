@@ -92,3 +92,17 @@ Notes, Garaje y Economía leen las fotos y los documentos con Gemini a través d
 | Economía | Lee tickets y extractos (fotos y PDF escaneados): en un ticket rellena fecha, comercio, importe y categoría; en un extracto, la lista de movimientos. Las categorías que la app ya ha aprendido mandan sobre la de Gemini. | Tesseract en el móvil, como antes. |
 
 Con permiso de solo ver, nadie puede usar Gemini (no puede añadir ni cambiar nada).
+
+## Economía: todos los movimientos del banco y «Por revisar»
+
+En **Añadir → Todos los movimientos del banco** se sube el extracto completo (PDF, CSV o Excel). Cada línea se clasifica sola:
+
+| Caso | Qué pasa |
+|---|---|
+| Nuevo | Se añade. |
+| Gasto fijo (su concepto contiene lo de «Cómo aparece en el banco») | Se añade enlazado al gasto fijo: queda pagado. Si ese mes ya estaba marcado como pagado a mano, se sustituye ese pago por el del banco. |
+| Repetido exacto (misma fecha, importe y concepto) | Se descarta. |
+| Importe igual al de un gasto fijo de ese mes, pero con otro concepto | Va a **Por revisar**: «¿Es el pago de…?». |
+| Mismo importe que otro movimiento con 3 días o menos de diferencia | Va a **Por revisar**: «Parecido a…». |
+
+La bandeja **Por revisar** se guarda en la pestaña del mismo nombre de la hoja de Economía (el script la crea sola), así que se ve desde cualquier móvil. Lo que se descarta se queda marcado como «Resuelto: descartado», para no volver a preguntar si se sube otra vez el mismo extracto.
