@@ -14,7 +14,7 @@ const esc = (s = '') =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Se muestra en Ajustes para saber qué versión tiene cada móvil (igual que CACHE en sw.js).
-const APP_VERSION = 7;
+const APP_VERSION = 8;
 
 const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -669,7 +669,7 @@ function viewReview() {
 function viewEditor(id) {
   const isNew = id === 'nuevo' || id === 'ticket';
   const draft = id === 'ticket' && receipt ? receipt.draft : {};
-  const m = isNew ? { date: draft.date || today(), concept: draft.concept || '', amount: draft.amount ?? '', category: '', note: '', who: 'comun' }
+  const m = isNew ? { date: draft.date || today(), concept: draft.concept || '', amount: draft.amount ?? '', category: catFor(draft.concept, draft.amount, draft.category), note: '', who: 'comun' }
     : movs.find((x) => x.id === id);
   if (!m) return '<p class="empty">Este movimiento ya no existe.</p>';
   const kind = m.amount === '' ? 'gasto' : m.amount >= 0 ? 'ingreso' : 'gasto';
@@ -1018,6 +1018,15 @@ function render() {
 }
 let lastRoute = '';
 
+// Categoría propuesta por Gemini, salvo que la app ya haya aprendido otra para ese concepto.
+function catFor(concept, amount, suggested) {
+  if (!suggested) return '';
+  const key = conceptKey(concept || '');
+  const learned = key && T.rules.find((r) => r.key === key);
+  if (learned) return learned.category;
+  return CATEGORIES.some((c) => c.id === suggested) ? suggested : '';
+}
+
 // ---------- Importar archivos ----------
 async function handleFiles(files) {
   const status = $('#import-status');
@@ -1055,7 +1064,7 @@ async function handleFiles(files) {
     rows: rows.map((r) => {
       const dup = movs.some((m) => sameMov(m, r));
       const f = r.amount < 0 && fixedFor(r);
-      return { ...r, category: f ? f.category : categorize(r.concept, r.amount, T.rules), fixed: f ? f.name : '', dup, keep: !dup };
+      return { ...r, category: f ? f.category : catFor(r.concept, r.amount, r.category) || categorize(r.concept, r.amount, T.rules), fixed: f ? f.name : '', dup, keep: !dup };
     }).sort((a, b) => b.date.localeCompare(a.date)),
   };
   say('');

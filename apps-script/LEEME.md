@@ -14,6 +14,7 @@ Un único proyecto de Apps Script para todas las secciones de Casa. Controla qui
 | `garaje.gs` | Sección Garaje: vehículos, registros y facturas en Drive (con lectura OCR). |
 | `economia.gs` | Sección Economía: movimientos, gastos fijos, presupuestos, objetivos y tickets en Drive. |
 | `notes.gs` | Sección Notes: notas, tareas, eventos, libretas, y fotos y grabaciones en Drive. |
+| `gemini.gs` | Lectura de fotos y documentos con Gemini (modelo `gemini-3.8-flash`) para Notes, Garaje y Economía. |
 | `appsscript.json` | Configuración del proyecto (zona horaria y publicación como app web). |
 
 ## Instalación (una sola vez)
@@ -47,6 +48,7 @@ Si quieres no tener que pegar la URL en cada dispositivo, ponla también en `com
 | `ECONOMIA_FOLDER_ID` | Tú, a mano | ID de la carpeta de tickets «Economía familiar - tickets» (`FOLDER_ID` en el script original). |
 | `NOTES_SPREADSHEET_ID` | Tú, a mano | ID de la Google Sheet de Notes (la del repositorio diario). |
 | `NOTES_FOLDER_ID` | Tú, a mano | ID de la carpeta de fotos y grabaciones de Notes (`FOLDER_ID` en el código original: `1MSY4B9YGGNCExrQkpKkp7rWHCIaRtD_y`). |
+| `GEMINI_API_KEY` | Tú, a mano | Tu clave de la API de Gemini. Si falta o Gemini falla, cada sección usa su lector de antes. |
 | `CLAVE_PAREJA` | Ajustes | Clave de tu pareja. Se crea, cambia o quita desde Ajustes. |
 | `PERMISOS_PAREJA` | Ajustes | Ninguno / ver / editar en cada sección. |
 | `AVISO_EMAIL` | Ajustes | `si` para recibir un correo si alguien usa una clave incorrecta (como mucho uno por hora). |
@@ -78,3 +80,15 @@ Los navegadores guardan una copia de `comun/casa.js`, `comun/estilo.css` y `ajus
 1. Comprueba que `appsscript.json` del proyecto tiene la lista `oauthScopes` de este repositorio. Si una sección nueva necesita otro servicio de Google (por ejemplo Drive), se añade ahí.
 2. En el editor, elige la función `autorizar` en el desplegable de arriba y pulsa **▶ Ejecutar**. Acepta la ventana de permisos de Google. En el registro verás si puede abrir cada hoja.
 3. Publica una **nueva versión** de la implementación.
+
+## Lectura con Gemini
+
+Notes, Garaje y Economía leen las fotos y los documentos con Gemini a través de este script (`gemini.gs`), con la clave `GEMINI_API_KEY` y el modelo `gemini-3.8-flash` fijo en el código. La clave nunca llega al navegador.
+
+| Sección | Qué hace Gemini | Si Gemini falla o no hay conexión |
+|---|---|---|
+| Notes | Transcribe la foto (impreso o a mano) y la añade a la nota. | Tesseract en el móvil, como antes. |
+| Garaje | Transcribe la factura y rellena vehículo, tipo, qué se ha hecho, fecha, km, coste, taller, notas y próxima revisión. Lo que no encuentre se completa con la lectura de siempre del texto. | OCR de Google Drive, como antes. |
+| Economía | Lee tickets y extractos (fotos y PDF escaneados): en un ticket rellena fecha, comercio, importe y categoría; en un extracto, la lista de movimientos. Las categorías que la app ya ha aprendido mandan sobre la de Gemini. | Tesseract en el móvil, como antes. |
+
+Con permiso de solo ver, nadie puede usar Gemini (no puede añadir ni cambiar nada).

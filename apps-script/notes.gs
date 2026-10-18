@@ -240,6 +240,8 @@ const SECCION_NOTES = (function () {
       },
       upload: { tipo: 'editar', fn: function (p) { ss_ = null; return upload_(p); } },
       file: { tipo: 'ver', fn: function (p) { ss_ = null; return file_(p); } },
+      // Transcribe una foto con Gemini; si falla, la web usa el lector del móvil.
+      transcribir: { tipo: 'editar', fn: function (p) { return { texto: geminiTexto_([{ mime: p.mime, data: p.data }]) }; } },
     },
   };
 })();

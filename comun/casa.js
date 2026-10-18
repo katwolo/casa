@@ -99,6 +99,34 @@
     return permiso(id) !== 'ninguno';
   }
 
+  // ---------- Imágenes para Gemini ----------
+  // Prepara una foto (File/Blob) o un canvas para enviarla al script: JPEG de hasta
+  // 2400 px por lado, suficiente para letra pequeña sin pasarse de tamaño.
+  async function imagenParaIA(fuente, max, calidad) {
+    max = max || 2400;
+    calidad = calidad || 0.92;
+    let origen = fuente, ancho, alto, liberar = null;
+    if (fuente instanceof HTMLCanvasElement) {
+      ancho = fuente.width;
+      alto = fuente.height;
+    } else {
+      origen = await createImageBitmap(fuente, { imageOrientation: 'from-image' });
+      ancho = origen.width;
+      alto = origen.height;
+      liberar = () => origen.close && origen.close();
+    }
+    const escala = Math.min(1, max / Math.max(ancho, alto));
+    const c = document.createElement('canvas');
+    c.width = Math.round(ancho * escala);
+    c.height = Math.round(alto * escala);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(origen, 0, 0, c.width, c.height);
+    if (liberar) liberar();
+    return { mime: 'image/jpeg', data: c.toDataURL('image/jpeg', calidad).split(',')[1] };
+  }
+
   // ---------- Preferencias de este dispositivo ----------
   function preferencias() {
     const p = Object.assign({ tema: 'auto', nombre: '', orden: [], ocultas: [] }, leer(K_PREFS));
@@ -130,6 +158,7 @@
     comprobar: comprobar,
     permiso: permiso,
     tieneAcceso: tieneAcceso,
+    imagenParaIA: imagenParaIA,
     preferencias: preferencias,
     guardarPreferencias: guardarPreferencias,
     aplicarTema: aplicarTema,

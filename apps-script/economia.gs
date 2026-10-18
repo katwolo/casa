@@ -403,6 +403,48 @@ const SECCION_ECONOMIA = (function () {
   }
 
 
+  // ---------- Lectura de tickets y extractos con Gemini ----------
+  // Devuelve { texto, tipo: 'ticket' | 'extracto', ticket, movimientos }.
+  // Si falla, la web lee la imagen con el lector del móvil como antes.
+  function leerDocumento_(p) {
+    const cats = Object.keys(CATEGORIAS).map(function (k) { return k + ' (' + CATEGORIAS[k][0] + ')'; }).join(', ');
+    const prompt = [
+      'Eres un asistente que lee documentos de la economía de una casa: tickets, facturas y extractos de cuentas o tarjetas.',
+      'Transcribe TODO el texto visible.',
+      reglasTranscripcion_(false),
+      '',
+      'Devuelve SOLO un objeto JSON con esta forma:',
+      '{',
+      '  "texto": "la transcripción completa, siguiendo las reglas",',
+      '  "tipo": "ticket si es un ticket o factura de una compra o pago; extracto si es una lista de movimientos de una cuenta o tarjeta",',
+      '  "ticket": { "fecha": "AAAA-MM-DD", "comercio": "nombre del comercio o empresa", "importe": "total pagado, número positivo con punto decimal", "categoria": "id de la categoría" },',
+      '  "movimientos": [ { "fecha": "AAAA-MM-DD", "concepto": "texto del movimiento", "importe": "número con signo: negativo los cargos y gastos, positivo los abonos e ingresos" } ]',
+      '}',
+      'Si es un extracto, "ticket" es null. Si es un ticket, "movimientos" es una lista vacía.',
+      'En un extracto, no confundas el saldo con el importe del movimiento.',
+      'Categorías posibles (usa solo el id): ' + cats + '.',
+      'Si un dato no aparece en el documento, pon null. No inventes datos.',
+    ].join('\n');
+    const r = geminiJson_(prompt, [{ mime: p.mime, data: p.data }]);
+    const cat = function (v) { return CATEGORIAS[v] ? v : null; };
+    const t = r.ticket || {};
+    const importe = geminiNumero_(t.importe);
+    const movimientos = (Array.isArray(r.movimientos) ? r.movimientos : []).map(function (m) {
+      return { date: geminiFecha_(m.fecha), concept: geminiTextoCorto_(m.concepto, 120) || 'Movimiento', amount: geminiNumero_(m.importe) };
+    }).filter(function (m) { return m.date && m.amount; });
+    return {
+      texto: String(r.texto || ''),
+      tipo: r.tipo === 'extracto' && movimientos.length ? 'extracto' : 'ticket',
+      ticket: {
+        date: geminiFecha_(t.fecha),
+        concept: geminiTextoCorto_(t.comercio, 60) || '',
+        amount: importe === null ? null : -Math.abs(importe),
+        category: cat(t.categoria),
+      },
+      movimientos: movimientos,
+    };
+  }
+
   // ---------- acciones ----------
   // Cada petición empieza sin hoja ni nombres en memoria.
   function inicio_() { ss_ = null; NAMES_ = null; }
@@ -422,6 +464,7 @@ const SECCION_ECONOMIA = (function () {
       },
       upload: { tipo: 'editar', fn: function (p) { inicio_(); return upload_(p); } },
       file: { tipo: 'ver', fn: function (p) { inicio_(); return file_(p); } },
+      leerDocumento: { tipo: 'editar', fn: function (p) { return leerDocumento_(p); } },
     },
   };
 })();

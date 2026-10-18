@@ -31,6 +31,7 @@ comidas/ botiquin/ garaje/ pesos/ economia/ notes/   la web de cada sección
 - **Claves:** la tuya está en la propiedad `CLAVE_ADMIN` del script. La de la pareja se crea, se cambia o se quita desde **Ajustes**, junto con sus permisos por sección: *nada*, *ver* o *editar*.
 - **Sin acceso** a una sección, esta no aparece en la portada. Con permiso de **ver**, la sección se abre en modo solo lectura.
 - **Seguridad:** el script guarda los últimos intentos con clave incorrecta y puede avisar por correo (en Ajustes).
+- **Gemini** lee las fotos y documentos en Notes, Garaje y Economía (con la clave `GEMINI_API_KEY` del script). Si falla, cada sección usa su lector de antes.
 
 Instalación, propiedades del script y qué hacer si sale un error de permisos: [`apps-script/LEEME.md`](apps-script/LEEME.md).
 
