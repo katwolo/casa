@@ -4,7 +4,9 @@
 // cierto tiempo), gastos variables (cambian de un mes a otro), ahorro e ingresos.
 // "need" marca lo que cuenta como necesidad en la regla 50/30/20 (lo demás son caprichos).
 // [id, nombre, emoji, grupo, necesidad]
-export const CATEGORIES = [
+// Categorías de serie. Las que se cambian, quitan o añaden desde Ajustes van en la tabla
+// «categories» (pestaña Categorías de la hoja) y se aplican encima con applyCategories.
+export const BASE_CATEGORIES = [
   ['casa', 'Alquiler o hipoteca', '🏠', 'fijo', true],
   ['comunidad', 'Comunidad e IBI', '🏢', 'fijo', true],
   ['suministros', 'Luz, agua, gas e internet', '💡', 'fijo', true],
@@ -27,12 +29,35 @@ export const CATEGORIES = [
   ['otros_ingresos', 'Otros ingresos', '💶', 'ingreso', false],
 ].map(([id, name, emoji, group, need]) => ({ id, name, emoji, group, need, kind: group === 'ingreso' ? 'ingreso' : 'gasto' }));
 
+// Lista en uso. Es siempre el mismo array (se rellena de nuevo), para que quien lo importe vea los cambios.
+export const CATEGORIES = BASE_CATEGORIES.map((c) => ({ ...c }));
+// «Otros gastos» y «Otros ingresos» no se pueden quitar: son el destino por defecto.
+export const FIXED_CATEGORIES = ['otros', 'otros_ingresos'];
+
+// records: [{ id, name, emoji, group, deleted }] de la tabla «categories».
+export function applyCategories(records = []) {
+  const byId = new Map(records.map((r) => [r.id, r]));
+  const list = BASE_CATEGORIES
+    .filter((c) => !byId.get(c.id)?.deleted || FIXED_CATEGORIES.includes(c.id))
+    .map((c) => {
+      const r = byId.get(c.id);
+      return r && !r.deleted ? { ...c, name: r.name || c.name, emoji: r.emoji || c.emoji, group: GROUP_IDS.includes(r.group) ? r.group : c.group } : { ...c };
+    });
+  for (const r of records) {
+    if (r.deleted || BASE_CATEGORIES.some((c) => c.id === r.id)) continue;
+    list.push({ id: r.id, name: r.name || 'Sin nombre', emoji: r.emoji || '🏷️', group: GROUP_IDS.includes(r.group) ? r.group : 'variable', need: false });
+  }
+  list.forEach((c) => (c.kind = c.group === 'ingreso' ? 'ingreso' : 'gasto'));
+  CATEGORIES.splice(0, CATEGORIES.length, ...list);
+}
+
 export const GROUPS = {
   fijo: 'Gastos fijos',
   variable: 'Gastos variables',
   ahorro: 'Ahorro',
   ingreso: 'Ingresos',
 };
+const GROUP_IDS = Object.keys(GROUPS);
 
 export const catById = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES.find((c) => c.id === 'otros');
 
@@ -89,6 +114,13 @@ export const conceptKey = (text) => normalize(text).split(' ').slice(0, 3).join(
 
 // rules: [{ key, category }] aprendidas al corregir la categoría de un movimiento.
 export function categorize(text, amount, rules = []) {
+  const id = guessCategory(text, amount, rules);
+  // Si la categoría se ha quitado en Ajustes, va a «Otros».
+  if (CATEGORIES.some((c) => c.id === id)) return id;
+  return amount >= 0 ? 'otros_ingresos' : 'otros';
+}
+
+function guessCategory(text, amount, rules) {
   const key = conceptKey(text);
   const learned = key && rules.find((r) => r.key === key);
   if (learned) return learned.category;

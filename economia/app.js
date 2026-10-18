@@ -1,5 +1,5 @@
 import { db } from './db.js';
-import { CATEGORIES, GROUPS, catById, categorize, conceptKey, normalize } from './categories.js';
+import { CATEGORIES, GROUPS, FIXED_CATEGORIES, applyCategories, catById, categorize, conceptKey, normalize } from './categories.js';
 import { readFile } from './importer.js';
 import { monthlyBars, categoryBars, budgetMeter, bindTooltips, eur } from './charts.js';
 import { api, DEFAULT_URL, getConfig, setConfig, isConfigured, permiso, getTombstones, addTombstone, clearTombstones, resetTombstones } from './sync.js';
@@ -14,7 +14,7 @@ const esc = (s = '') =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Se muestra en Ajustes para saber qué versión tiene cada móvil (igual que CACHE en sw.js).
-const APP_VERSION = 9;
+const APP_VERSION = 10;
 
 const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -62,9 +62,9 @@ const store = {
 // ---------- Estado ----------
 // Los movimientos van en su propio almacén; el resto son listas de registros que se sincronizan
 // igual que los movimientos (cada registro con id y updatedAt).
-const TABLES = ['budgets', 'rules', 'fixed', 'goals', 'settings', 'pending'];
+const TABLES = ['budgets', 'rules', 'fixed', 'goals', 'settings', 'pending', 'categories'];
 let movs = [];
-const T = { budgets: [], rules: [], fixed: [], goals: [], settings: [], pending: [] };
+const T = { budgets: [], rules: [], fixed: [], goals: [], settings: [], pending: [], categories: [] };
 let budgets = {}; // { categoría: límite mensual }, calculado a partir de T.budgets
 let month = monthOf(today());
 let query = '';
@@ -72,6 +72,12 @@ let filter = 'all';
 let who = 'all'; // filtro "de quién" en el resumen y en los movimientos
 let review = null; // movimientos leídos de un archivo, pendientes de confirmar
 let receipt = null; // ticket leído, pendiente de confirmar
+// Búsqueda avanzada en Movimientos. Con algún filtro puesto, se busca en todo el historial
+// (o entre las fechas elegidas) en vez de solo en el mes.
+const ADV_EMPTY = { from: '', to: '', cats: [], kind: '', min: '', max: '', source: '', ticket: false };
+let adv = { ...ADV_EMPTY, cats: [] };
+let advOpen = false;
+const advCount = () => ['from', 'to', 'kind', 'min', 'max', 'source'].filter((k) => adv[k] !== '').length + (adv.cats.length ? 1 : 0) + (adv.ticket ? 1 : 0);
 let bankResult = null; // resumen de la última importación de "Todos los movimientos"
 let bankWho = 'comun'; // de quién es la cuenta que se importa
 
@@ -103,6 +109,7 @@ async function load() {
     T.budgets = Object.entries(T.budgets).map(([id, limit]) => ({ id, limit, updatedAt: Date.now(), dirty: true }));
   }
   T.rules = T.rules.map((r) => ({ id: r.key, updatedAt: Date.now(), dirty: true, ...r, key: r.key || r.id }));
+  applyCategories(T.categories);
   refreshBudgets();
   // Si este mes no hay nada, empieza por el último mes con movimientos.
   if (movs.length && !movs.some((m) => monthOf(m.date) === month)) {
@@ -171,7 +178,7 @@ function newMov(fields) {
     updatedAt: Date.now(),
     dirty: true,
   };
-  // Si coincide con un gasto fijo, queda enlazado (cuenta como pagado) y toma su categoría.
+  // Si coincide con un gasto fijo, queda enlazado (es su cobro) y toma su categoría.
   const f = !m.fixedId && amount < 0 && fixedFor(m);
   if (f) Object.assign(m, { fixedId: f.id, category: fields.category || f.category });
   return m;
@@ -205,6 +212,40 @@ const fixedFor = (m) => activeFixed().find((f) => matchesFixed(f, m.concept));
 const paymentOf = (f, ym) =>
   movs.find((m) => monthOf(m.date) === ym && m.amount < 0 &&
     (m.fixedId === f.id || (!m.fixedId && matchesFixed(f, m.concept))));
+// Los gastos fijos están domiciliados: el día que toca, se crea solo su cobro como movimiento
+// (con id fijo por gasto y mes, para que dos móviles no lo creen dos veces). Si luego llega la
+// línea del banco, la sustituye. f.generated guarda hasta qué mes se han creado: si se borra un
+// cobro a mano, no se vuelve a crear. Devuelve true si ha creado alguno.
+async function autoFixed() {
+  const now = today();
+  const thisMonth = monthOf(now);
+  const created = [];
+  for (const f of activeFixed()) {
+    // Fijos de antes de esta función: se empieza en el mes actual (no se rellenan meses pasados).
+    let ym = f.generated ? shiftMonth(f.generated, 1) : (f.start && f.start > thisMonth ? f.start : thisMonth);
+    let last = f.generated || '';
+    for (; ym <= thisMonth; ym = shiftMonth(ym, 1)) {
+      const date = `${ym}-${String(Math.min(Number(f.day) || 1, lastDay(ym))).padStart(2, '0')}`;
+      if (dueIn(f, ym)) {
+        if (date > now) break; // aún no ha llegado el día: se mirará otra vez más adelante
+        const id = `fx-${f.id}-${ym}`;
+        if (!paymentOf(f, ym) && !movs.some((m) => m.id === id)) {
+          const m = newMov({ date, concept: f.name, amount: -Number(f.amount), category: f.category,
+            who: f.who || 'comun', fixedId: f.id, source: 'fijo' });
+          m.id = id;
+          created.push(m);
+          movs.push(m);
+        }
+      }
+      last = ym;
+    }
+    if (last && last !== f.generated) Object.assign(f, { generated: last, updatedAt: Date.now(), dirty: true });
+  }
+  await Promise.all(created.map((m) => db.put('movs', m)));
+  await saveTables();
+  if (created.length) scheduleSync(2000);
+  return created.length > 0;
+}
 const EVERY = { 1: 'Cada mes', 2: 'Cada 2 meses', 3: 'Cada 3 meses', 4: 'Cada 4 meses', 6: 'Cada 6 meses', 12: 'Una vez al año' };
 // Lo que cuestan de media al mes los gastos fijos (los anuales, repartidos en 12 meses...).
 const monthlyAverage = (list) => list.reduce((s, f) => s + Number(f.amount) / (Number(f.every) || 1), 0);
@@ -252,6 +293,11 @@ function totals(list) {
   t.saving = t.income - t.expense; // lo que queda (incluye lo apartado a ahorro)
   return t;
 }
+// Lo que queda de un mes (ingresos − gastos − lo apartado a ahorro) se arrastra al siguiente:
+// el saldo con el que se empieza un mes es la suma de todos los meses anteriores.
+const leftover = (t) => t.saving - t.ahorro;
+const carryInto = (ym) => leftover(totals(byWho(movs.filter((m) => monthOf(m.date) < ym))));
+
 function byCategory(list, group) {
   const map = new Map();
   for (const m of list) {
@@ -359,8 +405,10 @@ function viewHome() {
     return { key: ym, label: monthName(ym, { month: 'short' }).replace('.', ''), title: monthName(ym), income: tt.income, expense: tt.expense };
   });
   const rate = t.income > 0 ? Math.round((t.saving / t.income) * 100) : null;
+  const carry = carryInto(month);
+  const balance = carry + leftover(t);
   const due = activeFixed().filter((f) => dueIn(f, month) && (who === 'all' || (f.who || 'comun') === who));
-  const pending = due.filter((f) => !paymentOf(f, month)).sort((a, b) => a.day - b.day);
+  const upcoming = due.filter((f) => !paymentOf(f, month)).sort((a, b) => a.day - b.day);
   const variableCats = byCategory(list, 'variable');
   const pct = (v) => (t.income > 0 ? `${Math.round((v / t.income) * 100)} %` : '');
   const minus = (v) => (Math.round(v) ? `−${eur(v, 0)}` : eur(0, 0));
@@ -370,29 +418,29 @@ function viewHome() {
     ${pendingBanner()}
     ${whoChips()}
     <section class="tiles">
-      <div class="tile main"><span>Os queda este mes</span><strong class="${t.saving < 0 ? 'neg' : ''}">${eur(t.saving)}</strong>
-        <small>${rate === null ? 'Sin ingresos registrados' : t.saving >= 0 ? `Ahorráis el ${rate} % de lo que entra` : 'Gastáis más de lo que entra'}</small></div>
+      <div class="tile main"><span>Os queda</span><strong class="${balance < 0 ? 'neg' : ''}">${eur(balance)}</strong>
+        <small>${Math.abs(carry) >= 0.005 ? `${eur(carry)} del mes anterior · ` : ''}${rate === null ? 'Sin ingresos este mes' : t.saving >= 0 ? `Este mes ahorráis el ${rate} % de lo que entra` : 'Este mes gastáis más de lo que entra'}</small></div>
     </section>
 
     <section class="card">
       <h2>¿A dónde va el dinero?</h2>
       <ul class="flow">
+        ${Math.abs(carry) >= 0.005 ? `<li><span>↪️ Del mes anterior</span><strong class="${carry < 0 ? 'neg' : 'pos'}">${eur(carry)}</strong></li>` : ''}
         <li><span>💶 Ingresos</span><strong class="pos">${eur(t.income, 0)}</strong></li>
         <li><a href="#/fijos"><span>🏠 Gastos fijos</span><strong>${minus(t.fijo)}</strong><small>${pct(t.fijo)}</small></a></li>
         <li><a href="#/movimientos"><span>🛒 Gastos variables</span><strong>${minus(t.variable)}</strong><small>${pct(t.variable)}</small></a></li>
         ${t.ahorro ? `<li><a href="#/presupuesto"><span>🐷 Apartado a ahorro</span><strong>${minus(t.ahorro)}</strong><small>${pct(t.ahorro)}</small></a></li>` : ''}
-        <li class="total"><span>Queda</span><strong class="${t.saving - t.ahorro < 0 ? 'neg' : ''}">${eur(t.saving - t.ahorro, 0)}</strong></li>
+        <li class="total"><span>Queda</span><strong class="${balance < 0 ? 'neg' : ''}">${eur(balance)}</strong></li>
       </ul>
     </section>
 
     ${due.length ? `<a class="card fixed-sum" href="#/fijos">
-      <div class="section-head"><h2>Gastos fijos del mes</h2><span class="count">${due.length - pending.length} de ${due.length} pagados</span></div>
-      ${meter(due.length ? ((due.length - pending.length) / due.length) * 100 : 0, pending.length ? 'warning' : 'good',
-        pending.length ? `Faltan ${pending.length}` : 'Todo pagado',
-        pending.length ? `${eur(pending.reduce((s, f) => s + Number(f.amount), 0), 0)} pendientes` : '')}
-      ${pending.slice(0, 3).map((f) => `<p class="pending-line">${catById(f.category).emoji} ${esc(f.name)} <span>día ${f.day} · ${eur(f.amount, 0)}</span></p>`).join('')}
+      <div class="section-head"><h2>Gastos fijos del mes</h2><span class="count">${eur(due.reduce((s, f) => s + Number(f.amount), 0), 0)}</span></div>
+      ${upcoming.length ? `<p class="prose muted">Próximos cobros:</p>${upcoming.slice(0, 3).map((f) =>
+        `<p class="pending-line">${catById(f.category).emoji} ${esc(f.name)} <span>día ${f.day} · ${eur(f.amount, 0)}</span></p>`).join('')}`
+        : '<p class="prose muted">Ya se han cobrado todos los de este mes.</p>'}
     </a>` : activeFixed().length ? '' : `<a class="card hint" href="#/fijos">${icon('plus')}<span><strong>Apunta vuestros gastos fijos</strong><br>
-      <span class="muted">Hipoteca, luz, seguros, colegio... y verás cada mes qué está pagado y qué falta.</span></span></a>`}
+      <span class="muted">Hipoteca, luz, seguros, colegio... Se apuntan solos el día que se cobran.</span></span></a>`}
 
     <section class="card"><h2>Últimos 6 meses</h2>${monthlyBars(series, month)}</section>
 
@@ -413,12 +461,9 @@ function viewHome() {
 // ---------- Gastos fijos ----------
 function viewFixed() {
   const all = activeFixed();
-  const due = all.filter((f) => dueIn(f, month));
+  const due = all.filter((f) => dueIn(f, month)).sort((a, b) => a.day - b.day);
   const rest = all.filter((f) => !dueIn(f, month));
-  const paid = due.filter((f) => paymentOf(f, month));
-  const pending = due.filter((f) => !paymentOf(f, month)).sort((a, b) => a.day - b.day);
   const sum = (l) => l.reduce((s, f) => s + Number(f.amount), 0);
-  const paidSum = paid.reduce((s, f) => s - paymentOf(f, month).amount, 0);
   const irregular = all.filter((f) => Number(f.every) > 1);
   const provision = monthlyAverage(irregular);
   const candidates = recurringCandidates();
@@ -426,30 +471,28 @@ function viewFixed() {
     const p = paymentOf(f, month);
     const c = catById(f.category);
     const diff = p ? -p.amount - Number(f.amount) : 0;
-    return `<li class="fx${p ? ' paid' : ''}">
+    const when = p ? `Cobrado el ${fmtShort(p.date)}: ${eur(-p.amount)}${Math.abs(diff) > 0.5 ? ` (${diff > 0 ? '+' : ''}${eur(diff)})` : ''}`
+      : `Se cobra el día ${f.day}`;
+    return `<li class="fx">
       <a class="row" href="#/fijo/${f.id}">
         <span class="cat-ic">${c.emoji}</span>
         <span class="row-main"><strong>${esc(f.name)}</strong>
           <span>Día ${f.day} · ${EVERY[f.every] || EVERY[1]}${f.who && f.who !== 'comun' ? ` · ${esc(whoName(f.who))}` : ''}</span>
-          ${p ? `<small class="${diff > 0.5 ? 'neg' : ''}">Pagado el ${fmtShort(p.date)}: ${eur(-p.amount)}${Math.abs(diff) > 0.5 ? ` (${diff > 0 ? '+' : ''}${eur(diff)})` : ''}</small>` : ''}</span>
+          <small class="${diff > 0.5 ? 'neg' : ''}">${when}</small></span>
         <span class="amt">${eur(f.amount)}</span>
       </a>
-      ${p ? `<span class="paid-mark" aria-label="Pagado">${icon('check')}</span>`
-        : `<button class="btn small" data-pay="${f.id}">Pagar</button>`}
     </li>`;
   };
   return `<div class="page-head"><h1>Gastos fijos</h1><a class="icon-btn" href="#/fijo/nuevo" aria-label="Añadir gasto fijo">${icon('plus')}</a></div>
     ${monthPicker()}
-    <section class="tiles three">
-      <div class="tile"><span>Este mes</span><strong>${eur(sum(due), 0)}</strong></div>
-      <div class="tile"><span>Pagado</span><strong>${eur(paidSum, 0)}</strong></div>
-      <div class="tile"><span>Falta</span><strong class="${pending.length ? 'warn' : ''}">${eur(sum(pending), 0)}</strong></div>
+    <section class="tiles">
+      <div class="tile"><span>Este mes</span><strong>${eur(sum(due), 0)}</strong>
+        <small>${due.length} ${due.length === 1 ? 'recibo domiciliado' : 'recibos domiciliados'}</small></div>
     </section>
     ${irregular.length ? `<p class="note">Hay recibos que no llegan cada mes (${irregular.map((f) => esc(f.name)).slice(0, 3).join(', ')}${irregular.length > 3 ? '…' : ''}).
       Para que no os pillen por sorpresa, apartad <strong>${eur(provision, 0)} al mes</strong> para ellos.</p>` : ''}
-    ${all.length ? `<p class="prose">De media, los gastos fijos son <strong>${eur(monthlyAverage(all), 0)} al mes</strong>.</p>` : ''}
-    ${pending.length ? `<h3 class="day">Pendientes</h3><ul class="list">${pending.map(row).join('')}</ul>` : ''}
-    ${paid.length ? `<h3 class="day">Pagados</h3><ul class="list">${paid.map(row).join('')}</ul>` : ''}
+    ${all.length ? `<p class="prose">De media, los gastos fijos son <strong>${eur(monthlyAverage(all), 0)} al mes</strong>. Se apuntan solos el día que se cobran; si subes el extracto del banco, se usa el importe real.</p>` : ''}
+    ${due.length ? `<ul class="list">${due.map(row).join('')}</ul>` : ''}
     ${!due.length ? `<p class="empty">${all.length ? 'Este mes no toca ningún recibo.' : 'Aún no hay gastos fijos. Añade la hipoteca o el alquiler, la luz, los seguros...'}</p>` : ''}
     ${rest.length ? `<details class="card"><summary>No tocan este mes (${rest.length})</summary><ul class="list">${rest.map((f) => `<li><a class="row" href="#/fijo/${f.id}">
       <span class="cat-ic">${catById(f.category).emoji}</span><span class="row-main"><strong>${esc(f.name)}</strong>
@@ -492,23 +535,9 @@ function viewFixedEditor(id, params) {
       <div class="field"><span>¿De quién?</span>${whoPicker('who', f.who || 'comun')}</div>
       <label class="field"><span>Cómo aparece en el banco (opcional)</span>
         <input name="match" value="${esc(f.match || '')}" placeholder="Ej.: endesa energia">
-        <small class="muted">Si un movimiento importado lo contiene, el recibo se marca como pagado solo.</small></label>
+        <small class="muted">Si una línea del extracto lo contiene, se usa como el cobro de este recibo (con su importe real).</small></label>
       <button class="btn primary wide">${isNew ? 'Guardar' : 'Guardar cambios'}</button>
     </form>`;
-}
-
-// Registra el pago de un gasto fijo como movimiento del mes que se está viendo.
-async function payFixed(id) {
-  const f = T.fixed.find((x) => x.id === id);
-  if (!f) return;
-  const day = Math.min(Number(f.day) || 1, lastDay(month));
-  const m = newMov({ date: `${month}-${String(day).padStart(2, '0')}`, concept: f.name, amount: -Number(f.amount),
-    category: f.category, who: f.who || 'comun', fixedId: f.id, source: 'fijo' });
-  await db.put('movs', m);
-  movs.push(m);
-  scheduleSync(1000);
-  toast(`${f.name}: pagado`);
-  render();
 }
 
 // ---------- Presupuesto ----------
@@ -631,12 +660,12 @@ function importCard() {
   </section>`;
 }
 
-// "Todos los movimientos del banco": se añaden solos; los fijos se marcan como pagados, los repetidos
+// "Todos los movimientos del banco": se añaden solos; los fijos se enlazan a su recibo, los repetidos
 // se descartan y los dudosos van a la bandeja "Por revisar".
 function bankCard() {
   return `<section class="card stack" id="bank">
     <h2>${icon('upload')} Todos los movimientos del banco</h2>
-    <p class="prose">Sube el extracto completo (PDF, CSV o Excel). Se añaden solos: los gastos fijos quedan pagados, los repetidos se descartan y lo dudoso te lo dejo en <em>Por revisar</em>.</p>
+    <p class="prose">Sube el extracto completo (PDF, CSV o Excel). Se añaden solos: los cobros de gastos fijos sustituyen al apuntado automáticamente, los repetidos se descartan y lo dudoso te lo dejo en <em>Por revisar</em>.</p>
     <div class="field"><span>¿De quién es esta cuenta?</span>${whoPicker('bank-who', bankWho)}</div>
     <label class="btn primary file-btn">${icon('file')} Subir movimientos
       <input type="file" id="bank-in" multiple accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.pdf,image/*"></label>
@@ -652,8 +681,8 @@ function bankResultCard() {
     <h2>Importado: ${esc(r.files.join(', '))}</h2>
     <ul class="prose steps">
       ${line(r.added, r.added === 1 ? 'movimiento añadido' : 'movimientos añadidos')}
-      ${line(r.fixed, r.fixed === 1 ? 'gasto fijo marcado como pagado' : 'gastos fijos marcados como pagados')}
-      ${line(r.replaced, r.replaced === 1 ? 'pago manual sustituido por el del banco' : 'pagos manuales sustituidos por los del banco')}
+      ${line(r.fixed, r.fixed === 1 ? 'cobro de gasto fijo' : 'cobros de gastos fijos')}
+      ${line(r.replaced, r.replaced === 1 ? 'cobro automático sustituido por el del banco' : 'cobros automáticos sustituidos por los del banco')}
       ${line(r.dups, r.dups === 1 ? 'repetido descartado (ya estaba)' : 'repetidos descartados (ya estaban)')}
       ${line(r.pending, r.pending === 1 ? 'dudoso para revisar' : 'dudosos para revisar')}
     </ul>
@@ -679,6 +708,12 @@ function classifyBank(rows) {
   for (const r of rows) {
     if (!r.date || !r.amount) continue;
     const exact = movs.find((m) => !used.has(m.id) && sameMov(m, r));
+    // Igual que un cobro apuntado automáticamente: se sustituye por la línea del banco (datos reales).
+    if (exact && exact.source === 'fijo' && exact.fixedId && r.amount < 0) {
+      used.add(exact.id);
+      out.replace.push({ r, f: T.fixed.find((x) => x.id === exact.fixedId), pay: exact });
+      continue;
+    }
     if (exact || T.pending.some((p) => !p.deleted && sameMov(p, r))) {
       if (exact) used.add(exact.id);
       out.dups++;
@@ -692,7 +727,7 @@ function classifyBank(rows) {
         const pay = paymentOf(f, ym);
         if (!pay) out.fixed.push({ r, f });
         else if (pay.source === 'fijo' && !used.has(pay.id)) { used.add(pay.id); out.replace.push({ r, f, pay }); }
-        else out.pending.push({ ...r, reason: `Ya hay un pago de «${f.name}» este mes`, fixedId: f.id, matchId: pay.id });
+        else out.pending.push({ ...r, reason: `Ya hay un cobro de «${f.name}» este mes`, fixedId: f.id, matchId: pay.id });
         continue;
       }
       // Importe igual al de un gasto fijo, pero el concepto no coincide: mejor preguntar.
@@ -700,7 +735,7 @@ function classifyBank(rows) {
       if (g) {
         const pay = paymentOf(g, ym);
         out.pending.push({ ...r, fixedId: g.id, matchId: pay ? pay.id : '',
-          reason: pay ? `¿Es el pago de «${g.name}»? Ya estaba marcado como pagado` : `¿Es el pago de «${g.name}»?` });
+          reason: pay ? `¿Es el cobro de «${g.name}»? Sustituiría al apuntado automáticamente` : `¿Es el cobro de «${g.name}»?` });
         continue;
       }
     }
@@ -793,7 +828,7 @@ function viewPending() {
       ${match ? `<p class="prose muted">Ya tienes: <strong>${esc(match.concept)}</strong> · ${fmtShort(match.date)} · ${eur(match.amount)}</p>` : ''}
       <label class="field"><span>Categoría si lo añades</span><select data-pcat="${p.id}" aria-label="Categoría">${catOptions(p.category)}</select></label>
       <div class="btn-row pend-act">
-        ${f ? `<button class="btn primary" data-pend="fixed" data-id="${p.id}">Es el pago de ${esc(f.name)}</button>` : ''}
+        ${f ? `<button class="btn primary" data-pend="fixed" data-id="${p.id}">Es el cobro de ${esc(f.name)}</button>` : ''}
         ${match && !f ? `<button class="btn primary" data-pend="same" data-id="${p.id}">Es el mismo, descartar</button>` : ''}
         <button class="btn ${f || match ? '' : 'primary'}" data-pend="add" data-id="${p.id}">Añadir como nuevo</button>
         <button class="btn danger" data-pend="discard" data-id="${p.id}">Descartar</button>
@@ -822,13 +857,13 @@ async function resolvePending(action, id) {
     const pay = f && paymentOf(f, monthOf(p.date));
     if (pay && pay.source === 'fijo') {
       await usePaymentFromBank(pay, p);
-      toast(`${f.name}: pago sustituido por el del banco`);
+      toast(`${f.name}: cobro sustituido por el del banco`);
     } else {
       const m = newMov({ date: p.date, concept: p.concept, amount: p.amount, who: (f && f.who) || p.who || 'comun',
         source: 'extracto', fixedId: p.fixedId, category: f ? f.category : cat });
       await db.put('movs', m);
       movs.push(m);
-      toast(f ? `${f.name}: pagado` : 'Añadido');
+      toast(f ? `${f.name}: cobro apuntado` : 'Añadido');
     }
   }
   if (action === 'same' || action === 'discard') {
@@ -855,7 +890,7 @@ function viewImport() {
       <ul class="prose steps">
         <li><strong>Todos los movimientos</strong>: en la web o app de tu banco busca <em>Movimientos > Descargar / Exportar</em> y elige Excel o CSV. También vale el PDF. Súbelo en <em>Todos los movimientos del banco</em>: se añaden solos y solo te deja para revisar los dudosos.</li>
         <li><strong>Ticket o factura</strong>: haz una foto o sube el PDF. Se lee la fecha, la tienda y el total.</li>
-        <li>Antes de guardar verás todo lo que se ha leído y podrás corregirlo. Los movimientos repetidos se detectan solos y los recibos fijos se marcan como pagados.</li>
+        <li>Antes de guardar verás todo lo que se ha leído y podrás corregirlo. Los movimientos repetidos se detectan solos y los cobros de los gastos fijos se enlazan a su recibo.</li>
       </ul>
     </div>`;
 }
@@ -916,13 +951,21 @@ function viewEditor(id) {
 // ---------- Movimientos ----------
 function viewList(params) {
   const cat = params.get('cat') || '';
-  let list = inMonth(month);
+  const advOn = advCount() > 0;
+  let list = advOn ? byWho(movs.filter((m) => (!adv.from || m.date >= adv.from) && (!adv.to || m.date <= adv.to))) : inMonth(month);
   if (cat) list = list.filter((m) => m.category === cat);
   if (filter !== 'all') list = list.filter((m) => groupOf(m) === filter);
   if (query) {
     const q = query.toLowerCase();
     list = list.filter((m) => `${m.concept} ${m.note} ${catById(m.category).name}`.toLowerCase().includes(q));
   }
+  if (adv.cats.length) list = list.filter((m) => adv.cats.includes(m.category));
+  if (adv.kind === 'gasto') list = list.filter((m) => m.amount < 0);
+  if (adv.kind === 'ingreso') list = list.filter((m) => m.amount > 0);
+  if (adv.min !== '') list = list.filter((m) => Math.abs(m.amount) >= parseNum(adv.min));
+  if (adv.max !== '') list = list.filter((m) => Math.abs(m.amount) <= parseNum(adv.max));
+  if (adv.source) list = list.filter((m) => (m.source || 'manual') === adv.source);
+  if (adv.ticket) list = list.filter((m) => m.hasFile || m.driveId);
   list.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   const days = new Map();
   for (const m of list) {
@@ -930,10 +973,38 @@ function viewList(params) {
     days.get(m.date).push(m);
   }
   const t = totals(list);
+  const n = advCount();
+  const range = adv.from || adv.to
+    ? `${adv.from ? `del ${fmtShort(adv.from)}${adv.from.slice(0, 4) !== (adv.to || adv.from).slice(0, 4) ? ` de ${adv.from.slice(0, 4)}` : ''}` : 'hasta'} ${adv.to ? `${adv.from ? 'al' : ''} ${fmtShort(adv.to)} de ${adv.to.slice(0, 4)}` : 'hasta hoy'}`
+    : 'en todo el historial';
   return `<div class="page-head"><h1>Movimientos</h1><a class="icon-btn" href="#/mov/nuevo" aria-label="Apuntar a mano">${icon('plus')}</a></div>
     ${pendingBanner()}
-    ${monthPicker()}
+    ${advOn ? `<p class="note">Buscando ${range}.</p>` : monthPicker()}
     <label class="search">${icon('search')}<input id="q" type="search" placeholder="Buscar" value="${esc(query)}"></label>
+    <details class="card adv" id="adv"${advOpen || advOn ? ' open' : ''}>
+      <summary>Búsqueda avanzada${n ? ` · ${n} ${n === 1 ? 'filtro' : 'filtros'}` : ''}</summary>
+      <div class="form">
+        <div class="two">
+          <label class="field"><span>Desde</span><input type="date" id="adv-from" value="${adv.from}"></label>
+          <label class="field"><span>Hasta</span><input type="date" id="adv-to" value="${adv.to}"></label>
+        </div>
+        <div class="two">
+          <label class="field"><span>Importe mínimo (€)</span><input id="adv-min" inputmode="decimal" placeholder="0" value="${esc(adv.min)}"></label>
+          <label class="field"><span>Importe máximo (€)</span><input id="adv-max" inputmode="decimal" placeholder="Sin límite" value="${esc(adv.max)}"></label>
+        </div>
+        <div class="two">
+          <label class="field"><span>Tipo</span><select id="adv-kind">${[['', 'Todos'], ['gasto', 'Gastos'], ['ingreso', 'Ingresos']]
+            .map(([v, l]) => `<option value="${v}"${adv.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+          <label class="field"><span>Origen</span><select id="adv-source">${[['', 'Cualquiera'], ['extracto', 'Banco'], ['ticket', 'Ticket'], ['manual', 'A mano'], ['fijo', 'Gasto fijo']]
+            .map(([v, l]) => `<option value="${v}"${adv.source === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        </div>
+        <details class="adv-cats"${adv.cats.length ? ' open' : ''}><summary>Categorías${adv.cats.length ? ` (${adv.cats.length})` : ''}</summary>
+          <div class="chips wrap">${CATEGORIES.map((c) =>
+          `<label class="chip-check"><input type="checkbox" name="adv-cat" value="${c.id}"${adv.cats.includes(c.id) ? ' checked' : ''}><span>${c.emoji} ${esc(c.name)}</span></label>`).join('')}</div></details>
+        <label class="check"><input type="checkbox" id="adv-ticket"${adv.ticket ? ' checked' : ''}> Solo con ticket o factura adjunta</label>
+        ${n ? '<button type="button" class="btn" data-action="adv-clear">Quitar filtros</button>' : ''}
+      </div>
+    </details>
     <div class="chips">
       ${[['all', 'Todos'], ['fijo', 'Fijos'], ['variable', 'Variables'], ['ingreso', 'Ingresos'], ['ahorro', 'Ahorro']].map(([k, l]) =>
         `<button data-filter="${k}" aria-pressed="${filter === k}">${l}</button>`).join('')}
@@ -943,6 +1014,61 @@ function viewList(params) {
     <p class="sum">${list.length} movimientos · <span class="pos">+${eur(t.income, 0)}</span> · <span>−${eur(t.expense + t.ahorro, 0)}</span></p>
     ${[...days.entries()].map(([d, ms]) => `<h3 class="day">${fmtDay(d)}</h3><ul class="list">${ms.map(movRow).join('')}</ul>`).join('')
       || '<p class="empty">No hay movimientos.</p>'}`;
+}
+
+// ---------- Categorías ----------
+function viewCategories() {
+  const used = (id) => movs.filter((m) => m.category === id).length;
+  return `<div class="page-head"><a class="icon-btn" href="#/mas" aria-label="Volver">${icon('back')}</a><h1>Categorías</h1>
+    <a class="icon-btn" href="#/categoria/nueva" aria-label="Añadir categoría">${icon('plus')}</a></div>
+    <p class="prose">Toca una para cambiarle el nombre, el icono o el grupo, o para quitarla.</p>
+    ${Object.entries(GROUPS).map(([g, label]) => `<h3 class="day">${label}</h3><ul class="list">${CATEGORIES.filter((c) => c.group === g)
+      .map((c) => `<li><a class="row" href="#/categoria/${c.id}"><span class="cat-ic">${c.emoji}</span>
+        <span class="row-main"><strong>${esc(c.name)}</strong><span>${used(c.id)} movimientos</span></span></a></li>`).join('')
+      || '<li class="empty">Ninguna.</li>'}</ul>`).join('')}
+    <a class="btn wide" href="#/categoria/nueva">${icon('plus')} Añadir categoría</a>`;
+}
+
+function viewCategoryEditor(id) {
+  const isNew = id === 'nueva';
+  const c = isNew ? { name: '', emoji: '🏷️', group: 'variable' } : CATEGORIES.find((x) => x.id === id);
+  if (!c) return '<p class="empty">Esta categoría ya no existe.</p>';
+  const fixedCat = FIXED_CATEGORIES.includes(id);
+  const others = CATEGORIES.filter((x) => x.id !== id && x.kind === c.kind);
+  const fallback = c.kind === 'ingreso' ? 'otros_ingresos' : 'otros';
+  const n = isNew ? 0 : movs.filter((m) => m.category === id).length;
+  return `<div class="page-head"><a class="icon-btn" href="#/categorias" aria-label="Volver">${icon('back')}</a>
+    <h1>${isNew ? 'Nueva categoría' : 'Categoría'}</h1></div>
+    <form id="cat-form" class="form" data-id="${isNew ? '' : c.id}">
+      <label class="field"><span>Nombre</span><input name="name" required maxlength="40" value="${esc(c.name)}" placeholder="Ej.: Mascotas"></label>
+      <label class="field"><span>Icono (un emoji)</span><input name="emoji" maxlength="4" value="${esc(c.emoji)}"></label>
+      <label class="field"><span>Grupo</span><select name="group">${Object.entries(GROUPS).map(([g, l]) =>
+        `<option value="${g}"${c.group === g ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+      <button class="btn primary wide">${isNew ? 'Añadir' : 'Guardar cambios'}</button>
+    </form>
+    ${isNew ? '' : fixedCat ? '<p class="note">Esta categoría no se puede quitar: es donde van los movimientos que no encajan en ninguna otra.</p>'
+      : `<section class="card stack">
+      <h2>Quitar categoría</h2>
+      ${n ? `<p class="prose">Tiene <strong>${n} movimientos</strong>. Al quitarla, ellos, sus gastos fijos y lo aprendido pasan a:</p>` : '<p class="prose">No tiene movimientos.</p>'}
+      <label class="field"><span>Pasan a</span><select id="cat-target">${others.map((x) =>
+        `<option value="${x.id}"${x.id === fallback ? ' selected' : ''}>${x.emoji} ${esc(x.name)}</option>`).join('')}</select></label>
+      <button class="btn danger" data-action="delete-cat">Quitar «${esc(c.name)}»</button>
+    </section>`}`;
+}
+
+// Quita una categoría: lo que la usaba pasa a "target" y queda borrada en la tabla.
+async function removeCategory(id, target) {
+  for (const m of movs) if (m.category === id) { m.category = target; await saveMov(m); }
+  const now = Date.now();
+  for (const k of ['fixed', 'rules', 'pending']) {
+    for (const r of T[k]) if (r.category === id) Object.assign(r, { category: target, updatedAt: now, dirty: true });
+  }
+  const budget = T.budgets.find((r) => r.id === id);
+  if (budget) await removeRec('budgets', id);
+  const base = CATEGORIES.find((x) => x.id === id);
+  await upsert('categories', { id, name: base?.name || '', emoji: base?.emoji || '', group: base?.group || '', deleted: true });
+  applyCategories(T.categories);
+  refreshBudgets();
 }
 
 // ---------- Ajustes ----------
@@ -995,6 +1121,8 @@ function viewMore() {
         <button class="btn" data-action="csv">Exportar a Excel (CSV)</button>
       </div>
     </div>
+    <a class="card hint" href="#/categorias">${icon('edit')}<span><strong>Categorías</strong><br>
+      <span class="muted">Añadir, cambiar o quitar categorías (${CATEGORIES.length} ahora).</span></span></a>
     <div class="card stack">
       <h2>Lo que la app ha aprendido</h2>
       ${T.rules.length ? `<ul class="list">${T.rules.map((r, i) => `<li class="row"><span class="row-main"><strong>${esc(r.key)}</strong>
@@ -1133,8 +1261,10 @@ async function syncNow({ manual = false } = {}) {
     // 3. Lo que venga de la hoja (otros dispositivos o ediciones a mano)
     let changed = await mergeRemote('movs', res.movs || []);
     for (const k of TABLES) changed = mergeRemote(k, res[k] || []) || changed;
+    applyCategories(T.categories);
     refreshBudgets();
     await saveTables();
+    if (await autoFixed()) changed = true;
 
     setConfig({ lastSync: Date.now(), lastError: '' });
     updateSyncStatus();
@@ -1209,14 +1339,17 @@ function render() {
   const params = new URLSearchParams(qs);
   const [, view, id] = path.split('/');
   const tab = { inicio: 'inicio', mas: 'inicio', movimientos: 'movimientos', mov: 'movimientos', fijos: 'fijos', fijo: 'fijos',
-    presupuesto: 'presupuesto', objetivo: 'presupuesto', importar: 'importar', pendientes: 'movimientos' }[view];
+    presupuesto: 'presupuesto', objetivo: 'presupuesto', importar: 'importar', pendientes: 'movimientos',
+    categorias: 'inicio', categoria: 'inicio' }[view];
   nav.querySelectorAll('[data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === tab));
-  nav.classList.toggle('hidden', ['mov', 'revisar', 'fijo', 'objetivo'].includes(view));
+  nav.classList.toggle('hidden', ['mov', 'revisar', 'fijo', 'objetivo', 'categoria'].includes(view));
   const views = {
     inicio: viewHome,
     importar: viewImport,
     revisar: viewReview,
     pendientes: viewPending,
+    categorias: viewCategories,
+    categoria: () => viewCategoryEditor(id),
     mov: () => viewEditor(id),
     movimientos: () => viewList(params),
     fijos: viewFixed,
@@ -1389,7 +1522,6 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.filter) { filter = t.dataset.filter; render(); }
   if (t.dataset.who) { who = t.dataset.who; render(); }
   if (t.dataset.whoGo) { e.preventDefault(); who = t.dataset.whoGo; location.hash = '#/movimientos'; }
-  if (t.dataset.pay) payFixed(t.dataset.pay);
   if (t.dataset.contribute) {
     const g = T.goals.find((x) => x.id === t.dataset.contribute);
     const v = prompt(`¿Cuánto apartáis para "${g.name}"? (€)`, '');
@@ -1421,6 +1553,18 @@ document.addEventListener('click', async (e) => {
     await removeRec('fixed', $('#fixed-form').dataset.id);
     toast('Gasto fijo borrado');
     location.hash = '#/fijos';
+  }
+  if (action === 'adv-clear') {
+    adv = { ...ADV_EMPTY, cats: [] };
+    render();
+  }
+  if (action === 'delete-cat') {
+    const id = $('#cat-form').dataset.id;
+    const target = $('#cat-target').value;
+    if (!confirm(`¿Quitar «${catById(id).name}»? Sus movimientos pasarán a «${catById(target).name}».`)) return;
+    await removeCategory(id, target);
+    toast('Categoría quitada');
+    location.hash = '#/categorias';
   }
   if (action === 'delete-goal') {
     if (!confirm('¿Borrar este objetivo?')) return;
@@ -1468,6 +1612,15 @@ document.addEventListener('change', async (e) => {
     t.value = '';
   }
   if (t.name === 'bank-who') bankWho = t.value;
+  if (t.id && t.id.startsWith('adv-')) {
+    const key = t.id.slice(4);
+    adv[key] = t.type === 'checkbox' ? t.checked : t.value.trim();
+    render();
+  }
+  if (t.name === 'adv-cat') {
+    adv.cats = [...document.querySelectorAll('input[name="adv-cat"]:checked')].map((x) => x.value);
+    render();
+  }
   if (t.id === 'restore-in' && t.files[0]) {
     try {
       const data = JSON.parse(await t.files[0].text());
@@ -1500,6 +1653,9 @@ document.addEventListener('change', async (e) => {
     toast('Lo recordaré para la próxima vez');
   }
 });
+
+// Recuerda si la búsqueda avanzada está abierta ("toggle" no sube, se escucha en captura).
+document.addEventListener('toggle', (e) => { if (e.target.id === 'adv') advOpen = e.target.open; }, true);
 
 document.addEventListener('input', (e) => {
   // Movimiento nuevo: la categoría se elige sola mientras se escribe el concepto, hasta que se toque a mano.
@@ -1549,6 +1705,17 @@ document.addEventListener('submit', async (e) => {
     }
     location.hash = '#/inicio';
   }
+  if (f.id === 'cat-form') {
+    const data = Object.fromEntries(new FormData(f));
+    const name = data.name.trim();
+    if (!name) { toast('Escribe un nombre'); return; }
+    const id = f.dataset.id || `c_${uid()}`;
+    if (CATEGORIES.some((c) => c.id !== id && c.name.toLowerCase() === name.toLowerCase())) { toast('Ya hay una categoría con ese nombre'); return; }
+    await upsert('categories', { id, name, emoji: (data.emoji || '').trim() || '🏷️', group: data.group, deleted: false });
+    applyCategories(T.categories);
+    toast(f.dataset.id ? 'Categoría guardada' : 'Categoría añadida');
+    location.hash = '#/categorias';
+  }
   if (f.id === 'fixed-form') {
     const data = Object.fromEntries(new FormData(f));
     const amount = Math.abs(parseNum(data.amount));
@@ -1558,7 +1725,10 @@ document.addEventListener('submit', async (e) => {
       day: Math.min(31, Math.max(1, Number(data.day) || 1)), every: Number(data.every) || 1,
       start: data.start || month, who: data.who || 'comun', match: conceptKey(data.match || ''),
     };
+    // Uno nuevo empieza a crear sus cobros desde este mes (o desde su primer mes, si es posterior).
+    if (!f.dataset.id) rec.generated = shiftMonth(rec.start > monthOf(today()) ? rec.start : monthOf(today()), -1);
     await upsert('fixed', rec);
+    await autoFixed();
     // Enlaza los pagos que ya estaban apuntados con ese concepto.
     if (rec.match) {
       for (const m of movs) {
@@ -1636,5 +1806,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 await load();
+await autoFixed();
 render();
 scheduleSync(1000);

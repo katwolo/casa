@@ -100,9 +100,15 @@ En **Añadir → Todos los movimientos del banco** se sube el extracto completo 
 | Caso | Qué pasa |
 |---|---|
 | Nuevo | Se añade. |
-| Gasto fijo (su concepto contiene lo de «Cómo aparece en el banco») | Se añade enlazado al gasto fijo: queda pagado. Si ese mes ya estaba marcado como pagado a mano, se sustituye ese pago por el del banco. |
+| Gasto fijo (su concepto contiene lo de «Cómo aparece en el banco») | Se añade enlazado al gasto fijo. Si ese mes ya estaba el cobro apuntado automáticamente, se sustituye por el del banco (con su importe real). |
 | Repetido exacto (misma fecha, importe y concepto) | Se descarta. |
 | Importe igual al de un gasto fijo de ese mes, pero con otro concepto | Va a **Por revisar**: «¿Es el pago de…?». |
 | Mismo importe que otro movimiento con 3 días o menos de diferencia | Va a **Por revisar**: «Parecido a…». |
 
 La bandeja **Por revisar** se guarda en la pestaña del mismo nombre de la hoja de Economía (el script la crea sola), así que se ve desde cualquier móvil. Lo que se descarta se queda marcado como «Resuelto: descartado», para no volver a preguntar si se sube otra vez el mismo extracto.
+
+## Economía: gastos fijos, saldo y categorías
+
+- **Gastos fijos domiciliados**: el día que toca, la app apunta sola el cobro como movimiento (con un ID fijo por recibo y mes, para que dos móviles no lo apunten dos veces). La columna «Cobros creados hasta» de la pestaña *Gastos fijos* guarda hasta qué mes se han creado: si borras un cobro, no se vuelve a crear. Empieza en el mes en que se activó esta función; no rellena meses pasados.
+- **Saldo que se arrastra**: lo que queda cada mes (ingresos − gastos − ahorro) pasa al siguiente. El saldo de un mes es la suma de todos los anteriores más el del propio mes.
+- **Categorías editables**: los cambios van en la pestaña **Categorías** (solo las cambiadas, quitadas o añadidas; el resto son las de serie). Al cambiar un nombre, el script reescribe las pestañas con el nombre nuevo sin perder a qué categoría pertenece cada fila. «Otros gastos» y «Otros ingresos» no se pueden quitar.
