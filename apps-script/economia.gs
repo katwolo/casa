@@ -151,6 +151,30 @@ const SECCION_ECONOMIA = (function () {
         ['deleted', 'Borrado', 'bool'],
       ],
     },
+    // Movimientos del banco que la app no ha podido clasificar solos (posibles repetidos o
+    // posibles pagos de un gasto fijo). Se revisan uno a uno en la app. Los descartados se
+    // quedan con "Resuelto: descartado" para no volver a preguntar si se sube el mismo extracto.
+    pending: {
+      sheet: 'Por revisar',
+      uuid: true,
+      cols: [
+        ['date', 'Fecha', 'date'],
+        ['concept', 'Concepto'],
+        ['amount', 'Importe', 'money'],
+        ['category', 'Categoría', 'cat'],
+        ['reason', 'Motivo'],
+        ['who', 'Quién', 'who'],
+        ['file', 'Archivo'],
+        ['resolved', 'Resuelto'],
+        ['modified', 'Modificado', 'readable'],
+        ['matchId', 'ID movimiento parecido'],
+        ['fixedId', 'ID gasto fijo'],
+        ['id', 'ID'],
+        ['createdAt', 'Creado', 'num'],
+        ['updatedAt', 'Actualizado', 'num'],
+        ['deleted', 'Borrado', 'bool'],
+      ],
+    },
   };
 
   const FORMATS = { date: 'dd/mm/yyyy', money: '#,##0.00 €', num: '0' };

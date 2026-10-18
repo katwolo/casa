@@ -1,5 +1,5 @@
 import { db } from './db.js';
-import { CATEGORIES, GROUPS, catById, categorize, conceptKey } from './categories.js';
+import { CATEGORIES, GROUPS, catById, categorize, conceptKey, normalize } from './categories.js';
 import { readFile } from './importer.js';
 import { monthlyBars, categoryBars, budgetMeter, bindTooltips, eur } from './charts.js';
 import { api, DEFAULT_URL, getConfig, setConfig, isConfigured, permiso, getTombstones, addTombstone, clearTombstones, resetTombstones } from './sync.js';
@@ -14,7 +14,7 @@ const esc = (s = '') =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Se muestra en Ajustes para saber qué versión tiene cada móvil (igual que CACHE en sw.js).
-const APP_VERSION = 8;
+const APP_VERSION = 9;
 
 const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -62,9 +62,9 @@ const store = {
 // ---------- Estado ----------
 // Los movimientos van en su propio almacén; el resto son listas de registros que se sincronizan
 // igual que los movimientos (cada registro con id y updatedAt).
-const TABLES = ['budgets', 'rules', 'fixed', 'goals', 'settings'];
+const TABLES = ['budgets', 'rules', 'fixed', 'goals', 'settings', 'pending'];
 let movs = [];
-const T = { budgets: [], rules: [], fixed: [], goals: [], settings: [] };
+const T = { budgets: [], rules: [], fixed: [], goals: [], settings: [], pending: [] };
 let budgets = {}; // { categoría: límite mensual }, calculado a partir de T.budgets
 let month = monthOf(today());
 let query = '';
@@ -72,6 +72,8 @@ let filter = 'all';
 let who = 'all'; // filtro "de quién" en el resumen y en los movimientos
 let review = null; // movimientos leídos de un archivo, pendientes de confirmar
 let receipt = null; // ticket leído, pendiente de confirmar
+let bankResult = null; // resumen de la última importación de "Todos los movimientos"
+let bankWho = 'comun'; // de quién es la cuenta que se importa
 
 // ---------- Pareja ----------
 // "comun" = de los dos (lo normal); "p1" y "p2" = de cada uno.
@@ -194,16 +196,15 @@ const dueIn = (f, ym) => {
   const diff = monthsBetween(f.start || ym, ym);
   return diff >= 0 && diff % (Number(f.every) || 1) === 0;
 };
-// El concepto del banco se compara normalizado (también si se escribió a mano en la hoja).
-const matchKey = (f) => conceptKey(f.match || '');
-const fixedFor = (m) => {
-  const key = conceptKey(m.concept);
-  return key && activeFixed().find((f) => matchKey(f) === key);
-};
+// El concepto del banco se compara normalizado (también si se escribió a mano en la hoja):
+// el gasto fijo coincide si el concepto del movimiento contiene lo de "Cómo aparece en el banco".
+const matchKey = (f) => normalize(f.match || '');
+const matchesFixed = (f, concept) => Boolean(matchKey(f)) && ` ${normalize(concept)} `.includes(` ${matchKey(f)} `);
+const fixedFor = (m) => activeFixed().find((f) => matchesFixed(f, m.concept));
 // Pago de un gasto fijo en un mes: un movimiento enlazado o con el mismo concepto del banco.
 const paymentOf = (f, ym) =>
   movs.find((m) => monthOf(m.date) === ym && m.amount < 0 &&
-    (m.fixedId === f.id || (!m.fixedId && matchKey(f) && conceptKey(m.concept) === matchKey(f))));
+    (m.fixedId === f.id || (!m.fixedId && matchesFixed(f, m.concept))));
 const EVERY = { 1: 'Cada mes', 2: 'Cada 2 meses', 3: 'Cada 3 meses', 4: 'Cada 4 meses', 6: 'Cada 6 meses', 12: 'Una vez al año' };
 // Lo que cuestan de media al mes los gastos fijos (los anuales, repartidos en 12 meses...).
 const monthlyAverage = (list) => list.reduce((s, f) => s + Number(f.amount) / (Number(f.every) || 1), 0);
@@ -366,6 +367,7 @@ function viewHome() {
   const allMonth = movs.filter((m) => monthOf(m.date) === month);
   const perWho = ['comun', 'p1', 'p2'].map((w) => ({ w, ...totals(allMonth.filter((m) => (m.who || 'comun') === w)) }));
   return `<div class="top-bar">${monthPicker()}<a class="icon-btn" href="#/mas" aria-label="Ajustes">${icon('gear')}</a></div>
+    ${pendingBanner()}
     ${whoChips()}
     <section class="tiles">
       <div class="tile main"><span>Os queda este mes</span><strong class="${t.saving < 0 ? 'neg' : ''}">${eur(t.saving)}</strong>
@@ -618,7 +620,7 @@ function importCard() {
   return `<section class="drop" id="drop">
     <div class="drop-ic">${icon('upload')}</div>
     <strong>Arrastra aquí tus archivos</strong>
-    <span class="muted">Extracto del banco (Excel, CSV o PDF), facturas en PDF o fotos de tickets</span>
+    <span class="muted">Fotos de tickets o facturas en PDF. Para el extracto completo, usa <em>Todos los movimientos del banco</em>.</span>
     <div class="btn-row">
       <label class="btn primary file-btn">${icon('file')} Elegir archivos
         <input type="file" id="file-in" multiple accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.pdf,image/*"></label>
@@ -629,17 +631,229 @@ function importCard() {
   </section>`;
 }
 
+// "Todos los movimientos del banco": se añaden solos; los fijos se marcan como pagados, los repetidos
+// se descartan y los dudosos van a la bandeja "Por revisar".
+function bankCard() {
+  return `<section class="card stack" id="bank">
+    <h2>${icon('upload')} Todos los movimientos del banco</h2>
+    <p class="prose">Sube el extracto completo (PDF, CSV o Excel). Se añaden solos: los gastos fijos quedan pagados, los repetidos se descartan y lo dudoso te lo dejo en <em>Por revisar</em>.</p>
+    <div class="field"><span>¿De quién es esta cuenta?</span>${whoPicker('bank-who', bankWho)}</div>
+    <label class="btn primary file-btn">${icon('file')} Subir movimientos
+      <input type="file" id="bank-in" multiple accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.pdf,image/*"></label>
+    <p id="bank-status" role="status"></p>
+  </section>`;
+}
+
+function bankResultCard() {
+  if (!bankResult) return '';
+  const r = bankResult;
+  const line = (n, txt) => (n ? `<li><strong>${n}</strong> ${txt}</li>` : '');
+  return `<section class="card stack">
+    <h2>Importado: ${esc(r.files.join(', '))}</h2>
+    <ul class="prose steps">
+      ${line(r.added, r.added === 1 ? 'movimiento añadido' : 'movimientos añadidos')}
+      ${line(r.fixed, r.fixed === 1 ? 'gasto fijo marcado como pagado' : 'gastos fijos marcados como pagados')}
+      ${line(r.replaced, r.replaced === 1 ? 'pago manual sustituido por el del banco' : 'pagos manuales sustituidos por los del banco')}
+      ${line(r.dups, r.dups === 1 ? 'repetido descartado (ya estaba)' : 'repetidos descartados (ya estaban)')}
+      ${line(r.pending, r.pending === 1 ? 'dudoso para revisar' : 'dudosos para revisar')}
+    </ul>
+    ${!r.added && !r.fixed && !r.replaced && !r.pending ? '<p class="prose">No había nada nuevo en el archivo.</p>' : ''}
+    <div class="btn-row">
+      ${r.pending ? `<a class="btn primary" href="#/pendientes">Revisar ${r.pending} ${r.pending === 1 ? 'dudoso' : 'dudosos'}</a>` : ''}
+      <a class="btn" href="#/movimientos">Ver movimientos</a>
+    </div>
+  </section>`;
+}
+
+const daysApart = (a, b) => Math.abs(new Date(a + 'T00:00') - new Date(b + 'T00:00')) / 864e5;
+// Los descartados se guardan como resueltos: así no se vuelve a preguntar por ellos.
+const activePending = () => T.pending.filter((p) => !p.deleted && !p.resolved);
+// Un gasto fijo cuyo importe coincide (±2 % o 50 céntimos) y que toca pagar ese mes.
+const fixedByAmount = (amount, ym) => activeFixed().find((f) =>
+  dueIn(f, ym) && Math.abs(-amount - Number(f.amount)) <= Math.max(0.5, Number(f.amount) * 0.02));
+
+// Decide qué hacer con cada línea del extracto (sin guardar nada todavía).
+function classifyBank(rows) {
+  const out = { add: [], fixed: [], replace: [], dups: 0, pending: [] };
+  const used = new Set(); // movimientos existentes ya emparejados con una línea
+  for (const r of rows) {
+    if (!r.date || !r.amount) continue;
+    const exact = movs.find((m) => !used.has(m.id) && sameMov(m, r));
+    if (exact || T.pending.some((p) => !p.deleted && sameMov(p, r))) {
+      if (exact) used.add(exact.id);
+      out.dups++;
+      continue;
+    }
+    const ym = monthOf(r.date);
+    if (r.amount < 0) {
+      // Gasto fijo reconocido por el concepto del banco.
+      const f = fixedFor(r);
+      if (f) {
+        const pay = paymentOf(f, ym);
+        if (!pay) out.fixed.push({ r, f });
+        else if (pay.source === 'fijo' && !used.has(pay.id)) { used.add(pay.id); out.replace.push({ r, f, pay }); }
+        else out.pending.push({ ...r, reason: `Ya hay un pago de «${f.name}» este mes`, fixedId: f.id, matchId: pay.id });
+        continue;
+      }
+      // Importe igual al de un gasto fijo, pero el concepto no coincide: mejor preguntar.
+      const g = fixedByAmount(r.amount, ym);
+      if (g) {
+        const pay = paymentOf(g, ym);
+        out.pending.push({ ...r, fixedId: g.id, matchId: pay ? pay.id : '',
+          reason: pay ? `¿Es el pago de «${g.name}»? Ya estaba marcado como pagado` : `¿Es el pago de «${g.name}»?` });
+        continue;
+      }
+    }
+    // Mismo importe y fecha cercana a un movimiento que ya existe.
+    const near = movs.find((m) => !used.has(m.id) && Math.abs(m.amount - r.amount) < 0.005 && daysApart(m.date, r.date) <= 3);
+    if (near) {
+      used.add(near.id);
+      out.pending.push({ ...r, matchId: near.id, reason: `Parecido a «${near.concept}» del ${fmtShort(near.date)}` });
+      continue;
+    }
+    out.add.push(r);
+  }
+  return out;
+}
+
+// Sustituye un pago marcado a mano por el movimiento real del banco.
+function usePaymentFromBank(pay, r) {
+  Object.assign(pay, { date: r.date, concept: r.concept, amount: r.amount, source: 'extracto' });
+  return saveMov(pay);
+}
+
+async function importBank(files) {
+  const status = $('#bank-status');
+  const say = (msg) => { if (status) status.textContent = msg; };
+  const rows = [];
+  for (const file of files) {
+    try {
+      const res = await readFile(file, say);
+      if (res.kind === 'receipt') {
+        if (res.draft.amount) rows.push({ ...res.draft });
+      } else rows.push(...res.rows);
+    } catch (err) {
+      say(err.message);
+      toast(err.message);
+      return;
+    }
+  }
+  if (!rows.length) {
+    say('No he encontrado movimientos en el archivo. Prueba con el Excel o CSV que descarga tu banco.');
+    return;
+  }
+  const c = classifyBank(rows);
+  const file = files.map((f) => f.name).join(', ');
+  const added = [
+    ...c.add.map((r) => newMov({ ...r, who: bankWho, source: 'extracto', category: catFor(r.concept, r.amount, r.category) })),
+    ...c.fixed.map(({ r, f }) => newMov({ ...r, who: f.who || bankWho, source: 'extracto', fixedId: f.id, category: f.category })),
+  ];
+  await Promise.all(added.map((m) => db.put('movs', m)));
+  movs.push(...added);
+  await Promise.all(c.replace.map(({ r, pay }) => usePaymentFromBank(pay, r)));
+  const now = Date.now();
+  for (const p of c.pending) {
+    T.pending.push({ id: uid(), date: p.date, concept: p.concept, amount: p.amount,
+      category: catFor(p.concept, p.amount, p.category) || categorize(p.concept, p.amount, T.rules),
+      reason: p.reason, who: bankWho, file, matchId: p.matchId || '', fixedId: p.fixedId || '',
+      createdAt: now, updatedAt: now, dirty: true });
+  }
+  await saveMeta();
+  scheduleSync(1000);
+  if (added.length) month = monthOf(added.reduce((a, b) => (a.date > b.date ? a : b)).date);
+  bankResult = { files: files.map((f) => f.name), added: c.add.length, fixed: c.fixed.length,
+    replaced: c.replace.length, dups: c.dups, pending: c.pending.length };
+  say('');
+  render();
+  window.scrollTo(0, 0); // el resumen queda arriba del todo
+}
+
+// ---------- Por revisar ----------
+function pendingBanner() {
+  const n = activePending().length;
+  if (!n) return '';
+  return `<a class="card hint" href="#/pendientes">${icon('file')}<span><strong>${n} ${n === 1 ? 'movimiento' : 'movimientos'} por revisar</strong><br>
+    <span class="muted">Del extracto del banco: posibles repetidos o pagos de gastos fijos.</span></span></a>`;
+}
+
+function viewPending() {
+  const list = activePending().sort((a, b) => b.date.localeCompare(a.date));
+  const card = (p) => {
+    const match = p.matchId && movs.find((m) => m.id === p.matchId);
+    const f = p.fixedId && T.fixed.find((x) => x.id === p.fixedId);
+    return `<li class="card stack pend">
+      <div class="pend-head">
+        <div class="rv-main">
+          <strong>${esc(p.concept)}</strong>
+          <span>${fmtShort(p.date)}${p.who && p.who !== 'comun' ? ` · ${esc(whoName(p.who))}` : ''}</span>
+        </div>
+        <span class="amt ${p.amount >= 0 ? 'pos' : ''}">${p.amount >= 0 ? '+' : ''}${eur(p.amount)}</span>
+      </div>
+      <p class="note">${esc(p.reason || 'Dudoso')}</p>
+      ${match ? `<p class="prose muted">Ya tienes: <strong>${esc(match.concept)}</strong> · ${fmtShort(match.date)} · ${eur(match.amount)}</p>` : ''}
+      <label class="field"><span>Categoría si lo añades</span><select data-pcat="${p.id}" aria-label="Categoría">${catOptions(p.category)}</select></label>
+      <div class="btn-row pend-act">
+        ${f ? `<button class="btn primary" data-pend="fixed" data-id="${p.id}">Es el pago de ${esc(f.name)}</button>` : ''}
+        ${match && !f ? `<button class="btn primary" data-pend="same" data-id="${p.id}">Es el mismo, descartar</button>` : ''}
+        <button class="btn ${f || match ? '' : 'primary'}" data-pend="add" data-id="${p.id}">Añadir como nuevo</button>
+        <button class="btn danger" data-pend="discard" data-id="${p.id}">Descartar</button>
+      </div>
+    </li>`;
+  };
+  return `<div class="page-head"><a class="icon-btn" href="#/movimientos" aria-label="Volver">${icon('back')}</a>
+    <h1>Por revisar</h1><span class="count">${list.length}</span></div>
+    ${list.length ? `<p class="prose">Movimientos del banco que no he podido clasificar solo. Decide qué hacer con cada uno.</p>
+      <ul class="list pend-list">${list.map(card).join('')}</ul>`
+      : '<p class="empty">No hay nada por revisar.</p>'}`;
+}
+
+async function resolvePending(action, id) {
+  const p = T.pending.find((x) => x.id === id);
+  if (!p) return;
+  const cat = $(`[data-pcat="${id}"]`)?.value || p.category;
+  if (action === 'add') {
+    const m = newMov({ date: p.date, concept: p.concept, amount: p.amount, who: p.who || 'comun', source: 'extracto', category: cat });
+    await db.put('movs', m);
+    movs.push(m);
+    toast('Añadido');
+  }
+  if (action === 'fixed') {
+    const f = T.fixed.find((x) => x.id === p.fixedId);
+    const pay = f && paymentOf(f, monthOf(p.date));
+    if (pay && pay.source === 'fijo') {
+      await usePaymentFromBank(pay, p);
+      toast(`${f.name}: pago sustituido por el del banco`);
+    } else {
+      const m = newMov({ date: p.date, concept: p.concept, amount: p.amount, who: (f && f.who) || p.who || 'comun',
+        source: 'extracto', fixedId: p.fixedId, category: f ? f.category : cat });
+      await db.put('movs', m);
+      movs.push(m);
+      toast(f ? `${f.name}: pagado` : 'Añadido');
+    }
+  }
+  if (action === 'same' || action === 'discard') {
+    await upsert('pending', { id, resolved: 'descartado' });
+    toast('Descartado');
+  } else {
+    await removeRec('pending', id);
+  }
+  scheduleSync(1000);
+  render();
+}
+
 function viewImport() {
   return `<div class="page-head"><h1>Añadir</h1></div>
     <div class="quick">
       <a class="btn" href="#/mov/nuevo">${icon('edit')} Gasto o ingreso a mano</a>
       <a class="btn" href="#/fijo/nuevo">${icon('plus')} Gasto fijo</a>
     </div>
+    ${bankResultCard()}
+    ${bankCard()}
     ${importCard()}
     <div class="card stack">
       <h2>¿Qué archivo subo?</h2>
       <ul class="prose steps">
-        <li><strong>Extracto del banco</strong>: en la web o app de tu banco busca <em>Movimientos > Descargar / Exportar</em> y elige Excel o CSV. También vale el PDF.</li>
+        <li><strong>Todos los movimientos</strong>: en la web o app de tu banco busca <em>Movimientos > Descargar / Exportar</em> y elige Excel o CSV. También vale el PDF. Súbelo en <em>Todos los movimientos del banco</em>: se añaden solos y solo te deja para revisar los dudosos.</li>
         <li><strong>Ticket o factura</strong>: haz una foto o sube el PDF. Se lee la fecha, la tienda y el total.</li>
         <li>Antes de guardar verás todo lo que se ha leído y podrás corregirlo. Los movimientos repetidos se detectan solos y los recibos fijos se marcan como pagados.</li>
       </ul>
@@ -717,6 +931,7 @@ function viewList(params) {
   }
   const t = totals(list);
   return `<div class="page-head"><h1>Movimientos</h1><a class="icon-btn" href="#/mov/nuevo" aria-label="Apuntar a mano">${icon('plus')}</a></div>
+    ${pendingBanner()}
     ${monthPicker()}
     <label class="search">${icon('search')}<input id="q" type="search" placeholder="Buscar" value="${esc(query)}"></label>
     <div class="chips">
@@ -994,13 +1209,14 @@ function render() {
   const params = new URLSearchParams(qs);
   const [, view, id] = path.split('/');
   const tab = { inicio: 'inicio', mas: 'inicio', movimientos: 'movimientos', mov: 'movimientos', fijos: 'fijos', fijo: 'fijos',
-    presupuesto: 'presupuesto', objetivo: 'presupuesto', importar: 'importar' }[view];
+    presupuesto: 'presupuesto', objetivo: 'presupuesto', importar: 'importar', pendientes: 'movimientos' }[view];
   nav.querySelectorAll('[data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === tab));
   nav.classList.toggle('hidden', ['mov', 'revisar', 'fijo', 'objetivo'].includes(view));
   const views = {
     inicio: viewHome,
     importar: viewImport,
     revisar: viewReview,
+    pendientes: viewPending,
     mov: () => viewEditor(id),
     movimientos: () => viewList(params),
     fijos: viewFixed,
@@ -1166,8 +1382,9 @@ const parseNum = (s) => Number(String(s).replace(/\s|€/g, '').replace(/\.(?=\d
 
 // ---------- Eventos ----------
 document.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-month],[data-filter],[data-who],[data-who-go],[data-action],[data-forget],[data-pay],[data-contribute]');
+  const t = e.target.closest('[data-month],[data-filter],[data-who],[data-who-go],[data-action],[data-forget],[data-pay],[data-contribute],[data-pend]');
   if (!t) return;
+  if (t.dataset.pend) { resolvePending(t.dataset.pend, t.dataset.id); return; }
   if (t.dataset.month) { month = shiftMonth(month, Number(t.dataset.month)); render(); }
   if (t.dataset.filter) { filter = t.dataset.filter; render(); }
   if (t.dataset.who) { who = t.dataset.who; render(); }
@@ -1246,6 +1463,11 @@ document.addEventListener('change', async (e) => {
     if (t.files.length) handleFiles([...t.files]);
     t.value = '';
   }
+  if (t.id === 'bank-in') {
+    if (t.files.length) importBank([...t.files]);
+    t.value = '';
+  }
+  if (t.name === 'bank-who') bankWho = t.value;
   if (t.id === 'restore-in' && t.files[0]) {
     try {
       const data = JSON.parse(await t.files[0].text());
@@ -1340,7 +1562,7 @@ document.addEventListener('submit', async (e) => {
     // Enlaza los pagos que ya estaban apuntados con ese concepto.
     if (rec.match) {
       for (const m of movs) {
-        if (!m.fixedId && m.amount < 0 && conceptKey(m.concept) === rec.match) {
+        if (!m.fixedId && m.amount < 0 && matchesFixed(rec, m.concept)) {
           m.fixedId = rec.id;
           await saveMov(m);
         }
