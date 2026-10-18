@@ -146,7 +146,7 @@ body.solo-ver [onclick^="obrirRegistre"],
 body.solo-ver [onclick^="eliminar"],
 body.solo-ver [onclick^="llegirFactura"]{display:none!important}
 </style>
-<script src="../comun/casa.js?v=9"></script>
+<script src="../comun/casa.js?v=10"></script>
 </head>
 <body>
 <header class="top">
@@ -738,17 +738,38 @@ function extreuCamps(txt, vehicles) {
 
 async function llegirFactura(auto) {
   if (!nousFitxers.length) { toast('Primer fes una foto o adjunta la factura'); return; }
-  loader(true, 'Llegint la factura…');
+  loader(true, 'Llegint la factura amb Gemini…');
   try {
-    const txt = await gasRun('llegirFactura', nousFitxers.map(({ base64, mime }) => ({ base64, mime })));
+    // L'script Casa prova Gemini i, si falla, l'OCR de Drive. (Un script antic retorna només el text.)
+    const res = await gasRun('llegirFactura', nousFitxers.map(({ base64, mime }) => ({ base64, mime })));
+    const txt = typeof res === 'string' ? res : String(res?.text || '');
     const box = $('#ocrTxt');
-    if (box) { box.hidden = false; box.querySelector('pre').textContent = String(txt || '').trim() || '(buit)'; }
-    if (!String(txt || '').trim()) { toast("L'OCR no ha trobat text a la imatge. Prova una foto més recta i amb més llum.", true); return; }
-    const n = omplirAmb(extreuCamps(txt, S.vehicles));
-    toast(n ? `${n} camps omplerts amb la factura. Revisa'ls abans de desar.` : "S'ha llegit text però no s'hi han trobat dades (mira «Text llegit»)", !n);
+    if (box) { box.hidden = false; box.querySelector('pre').textContent = txt.trim() || '(buit)'; }
+    if (res?.avis) console.warn('[Gemini] ' + res.avis);
+    const deText = txt.trim() ? extreuCamps(txt, S.vehicles) : {};
+    const deGemini = campsGemini(res?.campos);
+    // Gemini mana; el que no hagi trobat es completa amb la lectura del text de sempre.
+    const camps = Object.assign({}, deText, ...Object.entries(deGemini).filter(([, v]) => !buit(v)).map(([k, v]) => ({ [k]: v })));
+    if (!txt.trim() && !Object.keys(deGemini).length) { toast("No s'ha trobat text a la imatge. Prova una foto més recta i amb més llum.", true); return; }
+    const n = omplirAmb(camps);
+    const via = res?.motor === 'gemini' ? ' amb Gemini' : '';
+    toast(n ? `${n} camps omplerts${via}. Revisa'ls abans de desar.` : "S'ha llegit text però no s'hi han trobat dades (mira «Text llegit»)", !n);
   }
   catch (err) { toast(errMsg(err), true); }
   finally { loader(false); }
+}
+// Camps que retorna Gemini, en el format del formulari (la matrícula es converteix en el vehicle).
+function campsGemini(c) {
+  if (!c) return {};
+  const out = {};
+  const net = s => String(s || '').toUpperCase().replace(/[\s\-.]/g, '');
+  if (c.matricula) {
+    const v = S.vehicles.find(x => x.matricula && net(x.matricula) === net(c.matricula));
+    if (v) out.vehicle = v.id;
+  }
+  if (c.tipus && TIPUS[c.tipus]) out.tipus = c.tipus;
+  ['titol', 'data', 'km', 'cost', 'taller', 'notes', 'properaData', 'propersKm'].forEach(k => { if (!buit(c[k])) out[k] = c[k]; });
+  return out;
 }
 function omplirAmb(c) {
   const f = $('#fr'); if (!f) return 0;

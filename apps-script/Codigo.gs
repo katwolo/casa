@@ -11,7 +11,7 @@
 //   { ok: true, ... }  o  { ok: false, error, codigo }
 // =====================================================================
 
-const VERSION = '8';
+const VERSION = '9';
 
 // Secciones de casa, en el orden de la portada.
 const LISTA_SECCIONES = ['comidas', 'botiquin', 'garaje', 'pesos', 'economia', 'notes'];
@@ -112,6 +112,20 @@ function autorizar() {
     console.log('Lectura de facturas (OCR de Drive): ✓');
   } catch (e) {
     console.log('Lectura de facturas (OCR de Drive): sin permiso (' + e.message + ')');
+  }
+  // Gemini: lectura de fotos y documentos en Notes, Garaje y Economía.
+  if (!(props.getProperty('GEMINI_API_KEY') || '').trim()) {
+    console.log('GEMINI_API_KEY: falta la propiedad (se usará el lector de antes)');
+  } else {
+    try {
+      const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODELO, {
+        headers: { 'x-goog-api-key': props.getProperty('GEMINI_API_KEY').trim() },
+        muteHttpExceptions: true,
+      });
+      console.log('Gemini (' + GEMINI_MODELO + '): ' + (r.getResponseCode() < 300 ? '✓' : 'error ' + r.getResponseCode() + ' ' + r.getContentText().slice(0, 150)));
+    } catch (e) {
+      console.log('Gemini: no se puede conectar (' + e.message + ')');
+    }
   }
   console.log('Correo para avisos: ' + Session.getEffectiveUser().getEmail());
   console.log('Cuota de correo restante hoy: ' + MailApp.getRemainingDailyQuota());

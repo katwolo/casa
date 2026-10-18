@@ -1,5 +1,8 @@
 // Lectura de archivos: extractos del banco (CSV, Excel, PDF) y tickets o facturas (PDF o foto).
-// Todo se procesa en el propio dispositivo; las librerías se descargan la primera vez que se usan.
+// Las fotos y los PDF escaneados los lee Gemini a través del script Casa; si no se puede, el OCR
+// del móvil. El resto se procesa en el propio dispositivo; las librerías se descargan la primera vez.
+import { api, isConfigured, permiso } from './sync.js';
+
 const LIBS = {
   xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
   pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
@@ -302,6 +305,37 @@ export function parseReceipt(text) {
   };
 }
 
+// ---------- Gemini ----------
+// Lee la imagen con Gemini a través del script Casa: transcribe y rellena los datos.
+// Devuelve null si no se puede (sin conexión, sin clave, error…): entonces se usa el OCR del móvil.
+async function withGemini(image, onStatus) {
+  if (!isConfigured() || !navigator.onLine || permiso() === 'ver') return null;
+  try {
+    onStatus?.('Leyendo con Gemini…');
+    const r = await api('leerDocumento', await window.Casa.imagenParaIA(image));
+    if (r.tipo === 'extracto' && r.movimientos?.length) {
+      return { kind: 'movements', rows: r.movimientos, text: r.texto || '' };
+    }
+    // Lo que Gemini no haya encontrado se completa con la lectura de siempre del texto.
+    const base = parseReceipt(r.texto || '');
+    const t = r.ticket || {};
+    return {
+      kind: 'receipt',
+      text: r.texto || '',
+      draft: {
+        date: t.date || base.date,
+        concept: t.concept || base.concept,
+        amount: t.amount ?? base.amount,
+        category: t.category || '',
+      },
+    };
+  } catch (err) {
+    console.warn('[Gemini]', err);
+    onStatus?.('Gemini no responde; leyendo en el móvil…');
+    return null;
+  }
+}
+
 // ---------- Entrada principal ----------
 // Devuelve { kind: 'movements', rows } para extractos o { kind: 'receipt', draft, text } para tickets.
 export async function readFile(file, onStatus) {
@@ -319,9 +353,14 @@ export async function readFile(file, onStatus) {
     text = res.text;
     if (text.replace(/\s/g, '').length < 30) {
       // PDF escaneado: sin texto, hay que leer la imagen.
-      text = await ocr(await pdfFirstPageImage(res.doc), onStatus);
+      const page = await pdfFirstPageImage(res.doc);
+      const ia = await withGemini(page, onStatus);
+      if (ia) return ia;
+      text = await ocr(page, onStatus);
     }
   } else if (file.type.startsWith('image/')) {
+    const ia = await withGemini(file, onStatus);
+    if (ia) return ia;
     text = await ocr(file, onStatus);
   } else {
     throw new Error(`No sé leer este tipo de archivo: ${file.name}`);

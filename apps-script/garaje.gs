@@ -137,15 +137,71 @@ const SECCION_GARAJE = (function () {
     return 'data:' + (b.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(b.getBytes());
   }
 
-  /* ───────────── OCR de factures (Drive) ───────────── */
+  /* ───────────── Lectura de factures: Gemini, i si falla, l'OCR de Drive ───────────── */
+
+  const TIPUS_GARATGE = ['Manteniment', 'Reparació', 'ITV', 'Pneumàtics', 'Assegurança', 'Impostos', 'Recanvis', 'Altres'];
+
+  /**
+   * @param {Array} fitxers [{base64, mime}]
+   * @return {{text: string, campos: Object|null, motor: string, avis?: string}}
+   *   campos: dades que Gemini ha trobat (null si s'ha fet servir l'OCR de Drive i la web les ha d'extreure del text)
+   */
+  function llegirFactura(fitxers) {
+    try {
+      return llegirFacturaGemini_(fitxers);
+    } catch (e) {
+      // Si Gemini falla (sense clau, quota, xarxa…), es fa com abans.
+      return { text: llegirFacturaDrive_(fitxers), campos: null, motor: 'drive', avis: e.message };
+    }
+  }
+
+  function llegirFacturaGemini_(fitxers) {
+    const prompt = [
+      'Eres un asistente que lee facturas, tickets y documentos de vehículos (talleres, ITV, seguros, impuestos de circulación, recambios).',
+      'Puede haber varias imágenes o un PDF del mismo documento. Transcribe TODO el texto visible.',
+      reglasTranscripcion_(false),
+      '',
+      'Devuelve SOLO un objeto JSON con esta forma:',
+      '{',
+      '  "texto": "la transcripción completa, siguiendo las reglas",',
+      '  "campos": {',
+      '    "matricula": "matrícula del vehículo tal como aparece, o null",',
+      '    "tipus": "uno de: ' + TIPUS_GARATGE.join(', ') + '",',
+      '    "titol": "resumen breve en catalán de lo que se ha hecho (máximo 60 caracteres), por ejemplo \"Revisió i canvi de filtres\"",',
+      '    "data": "fecha de la factura, AAAA-MM-DD",',
+      '    "km": "kilómetros del vehículo (número entero) o null",',
+      '    "cost": "importe total pagado con IVA (número con punto decimal) o null",',
+      '    "taller": "nombre del taller o de la empresa que emite el documento, o null",',
+      '    "notes": "conceptos principales de la factura, uno por línea (máximo 6), o null",',
+      '    "properaData": "fecha de la próxima revisión, próxima ITV o vencimiento del seguro, AAAA-MM-DD, o null",',
+      '    "propersKm": "kilómetros de la próxima revisión (número entero) o null"',
+      '  }',
+      '}',
+      'Si un dato no aparece en el documento, pon null. No inventes datos.',
+    ].join('\n');
+    const r = geminiJson_(prompt, (fitxers || []).map(f => ({ mime: f.mime, data: f.base64 })));
+    const c = r.campos || {};
+    const enter = v => { const n = geminiNumero_(v); return n === null ? null : Math.round(n); };
+    const campos = {
+      matricula: geminiTextoCorto_(c.matricula, 20),
+      tipus: TIPUS_GARATGE.indexOf(c.tipus) >= 0 ? c.tipus : null,
+      titol: geminiTextoCorto_(c.titol, 80),
+      data: geminiFecha_(c.data),
+      km: enter(c.km),
+      cost: geminiNumero_(c.cost),
+      taller: geminiTextoCorto_(c.taller, 80),
+      notes: geminiTextoCorto_(c.notes, 600),
+      properaData: geminiFecha_(c.properaData),
+      propersKm: enter(c.propersKm),
+    };
+    return { text: String(r.texto || ''), campos: campos, motor: 'gemini' };
+  }
 
   /**
    * Passa fotos/PDF per l'OCR de Google Drive i en retorna el text.
    * Es crea un Document de Google temporal (conversió amb OCR), se n'exporta el text i s'esborra.
-   * @param {Array} fitxers [{base64, mime}]
-   * @return {string} text de tots els fitxers, un darrere l'altre
    */
-  function llegirFactura(fitxers) {
+  function llegirFacturaDrive_(fitxers) {
     const token = ScriptApp.getOAuthToken();
     const auth = { Authorization: 'Bearer ' + token };
     return (fitxers || []).slice(0, 4).map(f => {

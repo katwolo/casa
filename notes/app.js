@@ -397,12 +397,24 @@ function updateSyncStatus(text) {
 async function runOcr(it, image) {
   const status = $('#ocr-status');
   const show = (t) => status && editingId === it.id && (status.textContent = t);
-  show('Preparando el reconocedor de texto…');
   try {
-    const text = await recognize(await shrinkImage(image, 2500, 0.9), (p, stage) => {
-      if (p != null) show(`Leyendo texto… ${Math.round(p * 100)} %`);
-      else if (stage && stage.includes('load')) show('Descargando el idioma español (solo la primera vez)…');
-    });
+    let text = null;
+    // Primero Gemini (a través del script Casa); si falla o no hay conexión, el lector del móvil.
+    if (isConfigured() && navigator.onLine && permiso() !== 'ver') {
+      show('Leyendo con Gemini…');
+      try {
+        text = (await api('transcribir', await window.Casa.imagenParaIA(image))).texto || '';
+      } catch (err) {
+        console.warn('[Gemini]', err);
+        show('Gemini no responde; leyendo en el móvil…');
+      }
+    }
+    if (text === null) {
+      text = await recognize(await shrinkImage(image, 2500, 0.9), (p, stage) => {
+        if (p != null) show(`Leyendo texto… ${Math.round(p * 100)} %`);
+        else if (stage && stage.includes('load')) show('Descargando el idioma español (solo la primera vez)…');
+      });
+    }
     if (!text) {
       show('');
       return toast('No se ha encontrado texto en la imagen');
