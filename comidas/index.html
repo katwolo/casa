@@ -400,7 +400,7 @@
       <button class="btn btn-primary" id="randomWeekBtn" style="flex:1;">🎲 Semana aleatoria</button>
       <a class="btn btn-ghost" id="shareWhatsappBtn" href="https://wa.me/" style="flex:1;">📲 Compartir</a>
     </div>
-    <button class="btn btn-ghost btn-sm btn-block" id="copyMenuBtn" style="margin-bottom:14px;">📋 Copiar menú (si WhatsApp no se abre)</button>
+    <button class="btn btn-ghost btn-sm btn-block" id="copyMenuBtn" style="margin-bottom:14px;">📋 Copiar menú</button>
     <div id="daysContainer"></div>
   </section>
 
@@ -882,17 +882,29 @@
     return lines.join('\n');
   }
 
-  // Enlace real presente en el HTML desde el principio: solo actualizamos su
-  // href justo antes de que el navegador procese el toque nativo del
-  // usuario, para que la navegación cuente como genuina (no disparada por
-  // JS), que es lo que ha demostrado ser fiable para el traspaso a WhatsApp.
+  // Compartir: en el móvil se abre el menú de compartir del sistema (se elige
+  // WhatsApp ahí). Así no se pasa por wa.me, cuya cadena de redirecciones
+  // hacía que en Android Chrome WhatsApp se abriera y volviera solo al
+  // navegador. Si el navegador no tiene ese menú (p. ej. en el ordenador),
+  // se sigue con el enlace real a wa.me: solo se actualiza su href justo
+  // antes de que el navegador procese el toque, para que cuente como genuino.
   document.getElementById('shareWhatsappBtn').addEventListener('click', (e)=>{
     const text = buildWeekText();
+    const data = { text };
+    if(navigator.share && (!navigator.canShare || navigator.canShare(data))){
+      e.preventDefault();
+      navigator.share(data).catch(err => {
+        if(err && err.name === 'AbortError') return; // se ha cerrado el menú sin compartir
+        copyText(text);
+      });
+      return;
+    }
     e.currentTarget.href = 'https://wa.me/?text=' + encodeURIComponent(text);
   });
 
-  document.getElementById('copyMenuBtn').addEventListener('click', async ()=>{
-    const text = buildWeekText();
+  document.getElementById('copyMenuBtn').addEventListener('click', ()=> copyText(buildWeekText()));
+
+  async function copyText(text){
     try{
       if(navigator.clipboard && navigator.clipboard.writeText){
         await navigator.clipboard.writeText(text);
@@ -911,7 +923,7 @@
     }catch(e){
       showToast('No se ha podido copiar');
     }
-  });
+  }
 
   // Si la semana ya está en caché, se renderiza al instante y se refresca
   // en segundo plano sin overlay; si no, se muestra el overlay como antes.
