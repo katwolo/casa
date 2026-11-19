@@ -14,9 +14,10 @@ const esc = (s = '') =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Se muestra en Ajustes para saber qué versión tiene cada móvil (igual que CACHE en sw.js).
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 
 const ICONS = {
+  home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-6h4v6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
@@ -385,7 +386,7 @@ function meter(pct, state, label, detail) {
 // ---------- Resumen ----------
 function viewHome() {
   if (!movs.length && !T.fixed.length) {
-    return `<div class="top-bar"><span></span><a class="icon-btn" href="#/mas" aria-label="Ajustes">${icon('gear')}</a></div>
+    return `<div class="top-bar"><a class="icon-btn" href="../" aria-label="Volver a Casa" title="Volver a Casa">${icon('home')}</a><span class="grow"></span><a class="icon-btn" href="#/mas" aria-label="Ajustes">${icon('gear')}</a></div>
       <section class="hero"><h1>Economía familiar</h1>
       <p class="muted">Para empezar, sube el extracto del banco o una foto de un ticket, o apunta vuestros gastos fijos (hipoteca, luz, seguros...).</p></section>
       ${importCard()}
@@ -414,7 +415,7 @@ function viewHome() {
   const minus = (v) => (Math.round(v) ? `−${eur(v, 0)}` : eur(0, 0));
   const allMonth = movs.filter((m) => monthOf(m.date) === month);
   const perWho = ['comun', 'p1', 'p2'].map((w) => ({ w, ...totals(allMonth.filter((m) => (m.who || 'comun') === w)) }));
-  return `<div class="top-bar">${monthPicker()}<a class="icon-btn" href="#/mas" aria-label="Ajustes">${icon('gear')}</a></div>
+  return `<div class="top-bar"><a class="icon-btn" href="../" aria-label="Volver a Casa" title="Volver a Casa">${icon('home')}</a>${monthPicker()}<a class="icon-btn" href="#/mas" aria-label="Ajustes">${icon('gear')}</a></div>
     ${pendingBanner()}
     ${whoChips()}
     <section class="tiles">

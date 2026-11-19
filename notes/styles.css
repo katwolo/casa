@@ -171,6 +171,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .btn.primary { background: var(--accent); color: #0d1f1b; }
 .btn.danger { color: var(--danger); }
 .icon-btn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; }
+a.icon-btn { color: inherit; }
 .icon-btn:active { background: var(--surface-2); }
 
 /* ---------- Editor ---------- */

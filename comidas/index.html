@@ -325,7 +325,7 @@
   body.solo-ver .edit-btn,
   body.solo-ver .del-btn,
   body.solo-ver #shopList .del{ display:none !important; }
-  body.solo-ver #daysContainer select,
+  body.solo-ver #daysContainer .meal-pick,
   body.solo-ver #shopList input[type=checkbox]{ pointer-events:none; }
   .loading-overlay{
     position:fixed; inset:0; background:var(--paper); display:flex; align-items:center; justify-content:center;
@@ -361,6 +361,51 @@
   .test-result.ok{ background:#E8EFE6; color:var(--pine); }
   .test-result.err{ background:var(--red-soft); color:var(--red); }
 
+  /* Planificación: botón que abre el buscador de recetas */
+  .meal-pick{
+    flex:1; min-width:0; text-align:left; cursor:pointer;
+    font-family:'Work Sans', sans-serif; font-size:14px;
+    padding:9px 30px 9px 10px; border-radius:9px;
+    border:1px solid var(--line); background:var(--paper) no-repeat right 10px center;
+    color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B6252' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  }
+  .meal-pick.empty{ color:var(--ink-soft); }
+  .meal-pick:focus-visible{ outline:2px solid var(--mustard); outline-offset:1px; }
+  .pick-overlay{ align-items:flex-start; padding-top:8vh; }
+  .pick-overlay .modal{ max-width:420px; }
+  .pick-overlay .recipe-search{ margin-bottom:10px; }
+  .pick-list{ max-height:52vh; overflow-y:auto; margin:0 -6px 12px; }
+  .pick-item{
+    display:block; width:100%; text-align:left; cursor:pointer;
+    font-family:'Work Sans', sans-serif; font-size:14.5px; color:var(--ink);
+    background:none; border:none; border-radius:9px; padding:10px 12px;
+  }
+  .pick-item:hover, .pick-item:focus-visible{ background:var(--card-2); outline:none; }
+  .pick-item.current{ background:#E8EFE6; color:var(--pine); font-weight:600; }
+  .pick-item.none{ color:var(--ink-soft); font-style:italic; }
+  .pick-empty{ font-size:13px; color:var(--ink-soft); padding:10px 12px; }
+
+  /* Recetas: formulario desplegable */
+  details.recipe-form > summary{
+    cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px;
+    font-family:'Fraunces', serif; font-weight:600; font-size:16px; color:var(--pine);
+  }
+  details.recipe-form > summary::-webkit-details-marker{ display:none; }
+  details.recipe-form > summary::after{ content:'▾'; margin-left:auto; color:var(--ink-soft); transition:transform .2s; }
+  details.recipe-form[open] > summary{ margin-bottom:14px; }
+  details.recipe-form[open] > summary::after{ transform:rotate(180deg); }
+
+  /* Casa: volver a la portada */
+  .home-btn{
+    position:absolute; top:18px; right:58px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.12); border-radius:10px;
+    width:34px; height:34px; font-size:16px; text-decoration:none; color:var(--paper);
+  }
+  .home-btn:hover{ background:rgba(255,255,255,.2); }
+  .app-header .eyebrow{ padding-right:84px; } /* deja sitio a la casita y al engranaje */
+
   @media (max-width:400px){
     .ing-row{ grid-template-columns: 1fr 1fr; }
     .ing-row .cat-select{ grid-column: span 2; }
@@ -373,6 +418,7 @@
 <div id="loading" class="loading-overlay"><div>Cargando tu menú…</div></div>
 
 <header class="app-header">
+  <a class="home-btn" href="../" aria-label="Volver a Casa" title="Volver a Casa">🏠</a>
   <button id="settingsBtn" class="settings-btn" aria-label="Ajustes" title="Ajustes">⚙️</button>
   <div class="eyebrow">Cocina de casa · 2 adultos + 1 peque</div>
   <h1>Menú semanal</h1>
@@ -411,7 +457,8 @@
       <button class="btn btn-ghost btn-sm" id="refreshRecipesBtn" title="Releer la hoja de recetas (por si has añadido o editado alguna directamente en Sheets)">🔄 Actualizar</button>
     </div>
 
-    <div class="recipe-form">
+    <details class="recipe-form" id="recipeFormBox">
+      <summary id="recipeFormTitle">＋ Nueva receta</summary>
       <div class="field">
         <label for="rName">Nombre del plato</label>
         <input type="text" id="rName" placeholder="Ej. Lentejas con verduras">
@@ -442,7 +489,7 @@
         <button class="btn btn-primary btn-block" id="saveRecipeBtn">Guardar receta</button>
         <button class="btn btn-ghost" id="cancelEditBtn" style="display:none;">Cancelar</button>
       </div>
-    </div>
+    </details>
 
     <input type="text" id="recipeSearch" class="recipe-search" placeholder="🔍 Buscar receta...">
     <div id="recipeList"></div>
@@ -475,6 +522,18 @@
 </main>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-overlay pick-overlay" id="pickOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+    <h3 id="pickTitle">Elegir receta</h3>
+    <p class="modal-hint" id="pickHint"></p>
+    <input type="text" id="pickSearch" class="recipe-search" placeholder="🔍 Buscar receta..." autocomplete="off" enterkeyhint="search">
+    <div class="pick-list" id="pickList"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost btn-block" id="pickCancel">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal">
@@ -793,32 +852,86 @@
       ['comida','cena'].forEach(meal=>{
         const row = document.createElement('div');
         row.className = 'meal-row';
-        const options = recipeOptionsFor(meal);
         const current = (state.weekPlan[day] && state.weekPlan[day][meal]) || '';
-        let optsHtml = '<option value="">— Sin planificar —</option>';
-        options.forEach(r=>{
-          optsHtml += `<option value="${r.id}" ${r.id===current?'selected':''}>${escapeHtml(r.name)}</option>`;
-        });
-        row.innerHTML = `<span class="tag">${meal}</span><select data-day="${day}" data-meal="${meal}">${optsHtml}</select>`;
+        const recipe = current && state.recipes.find(r => r.id === current);
+        // Un botón con el plato elegido: al tocarlo se abre el buscador de recetas.
+        row.innerHTML = `<span class="tag">${meal}</span><button type="button" class="meal-pick${recipe ? '' : ' empty'}"
+          data-day="${day}" data-meal="${meal}" aria-label="${meal} del ${day}: ${recipe ? escapeHtml(recipe.name) : 'sin planificar'}. Cambiar">${recipe ? escapeHtml(recipe.name) : '— Sin planificar —'}</button>`;
         card.appendChild(row);
       });
 
       container.appendChild(card);
     });
 
-    container.querySelectorAll('select').forEach(sel=>{
-      sel.addEventListener('change', async (e)=>{
-        const { day, meal } = e.target.dataset;
-        state.weekPlan[day][meal] = e.target.value || null;
-        renderShopping();
-        saveWeekCache();
-        try{
-          await gasRun('setWeekPlanCell', weekId(state.weekStart), day, meal, e.target.value || null);
-          showToast('Menú actualizado');
-        }catch(err){ showToast('No se ha podido guardar'); }
-      });
+    container.querySelectorAll('.meal-pick').forEach(btn=>{
+      btn.addEventListener('click', ()=> openPicker(btn.dataset.day, btn.dataset.meal));
     });
   }
+
+  // ---------- BUSCADOR DE RECETAS (planificación) ----------
+  let picking = null; // { day, meal }
+
+  function openPicker(day, meal){
+    picking = { day, meal };
+    document.getElementById('pickTitle').textContent = `${day} · ${meal === 'comida' ? 'Comida' : 'Cena'}`;
+    const n = recipeOptionsFor(meal).length;
+    document.getElementById('pickHint').textContent = `${n} ${n === 1 ? 'receta' : 'recetas'} para ${meal === 'comida' ? 'comer' : 'cenar'}.`;
+    const search = document.getElementById('pickSearch');
+    search.value = '';
+    renderPickList();
+    document.getElementById('pickOverlay').classList.add('active');
+    search.focus();
+  }
+
+  function closePicker(){
+    document.getElementById('pickOverlay').classList.remove('active');
+    picking = null;
+  }
+
+  function renderPickList(){
+    if(!picking) return;
+    const { day, meal } = picking;
+    const current = (state.weekPlan[day] && state.weekPlan[day][meal]) || '';
+    const q = normalizeSearch(document.getElementById('pickSearch').value);
+    const list = recipeOptionsFor(meal).filter(r => !q || normalizeSearch(r.name).includes(q));
+    const items = [];
+    if(!q) items.push(`<button type="button" class="pick-item none${current ? '' : ' current'}" data-id="">— Sin planificar —</button>`);
+    list.forEach(r => items.push(`<button type="button" class="pick-item${r.id === current ? ' current' : ''}" data-id="${r.id}">${escapeHtml(r.name)}</button>`));
+    if(q && !list.length) items.push(`<p class="pick-empty">No hay recetas que coincidan con «${escapeHtml(document.getElementById('pickSearch').value)}».</p>`);
+    document.getElementById('pickList').innerHTML = items.join('');
+  }
+
+  async function choosePick(recipeId){
+    if(!picking) return;
+    const { day, meal } = picking;
+    closePicker();
+    state.weekPlan[day][meal] = recipeId || null;
+    renderDays();
+    renderShopping();
+    saveWeekCache();
+    try{
+      await gasRun('setWeekPlanCell', weekId(state.weekStart), day, meal, recipeId || null);
+      showToast('Menú actualizado');
+    }catch(err){ showToast('No se ha podido guardar'); }
+  }
+
+  document.getElementById('pickSearch').addEventListener('input', renderPickList);
+  document.getElementById('pickSearch').addEventListener('keydown', (e)=>{
+    // Intro elige la primera receta de la lista filtrada.
+    if(e.key === 'Enter'){
+      const first = document.querySelector('#pickList .pick-item:not(.none)');
+      if(first){ e.preventDefault(); choosePick(first.dataset.id); }
+    }
+  });
+  document.getElementById('pickList').addEventListener('click', (e)=>{
+    const item = e.target.closest('.pick-item');
+    if(item) choosePick(item.dataset.id);
+  });
+  document.getElementById('pickCancel').addEventListener('click', closePicker);
+  document.getElementById('pickOverlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'pickOverlay') closePicker();
+  });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && picking) closePicker(); });
 
   // ---------- SEMANA ALEATORIA ----------
   function randomizeWeek(){
@@ -1013,6 +1126,8 @@
     editingRecipeId = null;
     document.getElementById('saveRecipeBtn').textContent = 'Guardar receta';
     document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('recipeFormTitle').textContent = '＋ Nueva receta';
+    document.getElementById('recipeFormBox').open = false;
   }
 
   // Los pasos se separan por saltos de línea reales (escritos en el textarea
@@ -1173,6 +1288,8 @@
     document.getElementById('rLink').value = r.link || '';
     document.getElementById('saveRecipeBtn').textContent = 'Guardar cambios';
     document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+    document.getElementById('recipeFormTitle').textContent = '✎ Editar «' + r.name + '»';
+    document.getElementById('recipeFormBox').open = true;
     document.querySelector('[data-view="recipes"]').click();
     window.scrollTo({top:0, behavior:'smooth'});
   }

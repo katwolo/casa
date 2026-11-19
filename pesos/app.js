@@ -46,6 +46,25 @@
   // Ícono armado con primitivas SVG (círculos/líneas), no con el emoji ⚙️:
   // ese emoji necesita la fuente de color del sistema y en algunos
   // navegadores/Android queda en blanco en vez de mostrar el engranaje.
+  // Casita para volver a la portada de Casa (también con primitivas SVG, como el engranaje).
+  function homeIconSvg_() {
+    var root = svg('svg', {
+      viewBox: '0 0 24 24', width: '18', height: '18', fill: 'none',
+      stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+    });
+    root.appendChild(svg('path', { d: 'M4 11l8-7 8 7' }));
+    root.appendChild(svg('path', { d: 'M6 10v10h12V10' }));
+    root.appendChild(svg('path', { d: 'M10 20v-6h4v6' }));
+    return root;
+  }
+
+  // Barra solo con la casita, para las pantallas sin cabecera (error, sin conexión).
+  function homeBar_() {
+    return h('div', { class: 'header-acts home-bar' }, [
+      h('a', { class: 'gear-btn', href: '../', title: 'Volver a Casa', 'aria-label': 'Volver a Casa' }, [homeIconSvg_()])
+    ]);
+  }
+
   function gearIconSvg_() {
     var root = svg('svg', {
       viewBox: '0 0 24 24', width: '18', height: '18', fill: 'none',
@@ -111,6 +130,7 @@
     var app = document.getElementById('app');
     app.innerHTML = '';
     var msg = err && err.message ? err.message : String(err);
+    app.appendChild(homeBar_());
     app.appendChild(h('div', { class: 'card' }, [
       h('div', { class: 'card-title', text: 'Ocurrió un error' }),
       h('div', { text: msg }),
@@ -158,6 +178,7 @@
     if (!(c.url && c.clave)) {
       var app = document.getElementById('app');
       app.innerHTML = '';
+      app.appendChild(homeBar_());
       app.appendChild(h('div', { class: 'card casa-aviso' }, [
         'Este dispositivo no está conectado. ',
         h('a', { href: '../ajustes/' }, ['Conéctalo en Ajustes de Casa']),
@@ -183,7 +204,10 @@
         h('div', { class: 'picker-title', text: 'Registro de Peso' }),
         h('div', { class: 'picker-subtitle', text: 'Elegí un perfil para ver su evolución' })
       ]),
-      h('button', { class: 'gear-btn', type: 'button', title: 'Gestionar perfiles', onClick: openManageProfiles }, [gearIconSvg_()])
+      h('div', { class: 'header-acts' }, [
+        h('a', { class: 'gear-btn', href: '../', title: 'Volver a Casa', 'aria-label': 'Volver a Casa' }, [homeIconSvg_()]),
+        h('button', { class: 'gear-btn', type: 'button', title: 'Gestionar perfiles', onClick: openManageProfiles }, [gearIconSvg_()])
+      ])
     ]);
     app.appendChild(header);
 

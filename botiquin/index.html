@@ -40,6 +40,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;b
 .hdr-logo .ico{width:34px;height:34px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 2px 8px rgba(37,99,235,.3)}
 .hdr-logo .txt{font-size:1.125rem;font-weight:700;color:var(--gray-900);letter-spacing:-.02em}
 .hdr-logo .txt span{color:var(--primary)}
+.hdr-acts{display:flex;gap:.5rem}
+a.hdr-btn{text-decoration:none}
 .hdr-btn{width:44px;height:44px;border-radius:50%;background:var(--gray-100);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.125rem;color:var(--gray-600)}
 
 /* MAIN */
@@ -271,7 +273,10 @@ body.solo-ver .tgl{pointer-events:none;opacity:.6}
     <div class="ico">💊</div>
     <div class="txt">Medi<span>Home</span></div>
   </div>
-  <button class="hdr-btn" id="hdr-btn" title="Inicio">🔔</button>
+  <div class="hdr-acts">
+    <a class="hdr-btn" href="../" title="Volver a Casa" aria-label="Volver a Casa">🏠</a>
+    <button class="hdr-btn" id="hdr-btn" title="Inicio">🔔</button>
+  </div>
 </header>
 
 <main class="main">

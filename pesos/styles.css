@@ -61,6 +61,10 @@
   .picker-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .picker-title { font-size: 22px; font-weight: 600; margin: 12px 4px 4px; }
   .picker-subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 4px 20px; }
+  .header-acts { display: flex; gap: 8px; }
+  a.gear-btn { text-decoration: none; }
+  .home-bar { margin-bottom: 12px; }
+  .home-bar .gear-btn { margin-top: 0; }
   .gear-btn {
     border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
     border-radius: 10px; width: 36px; height: 36px; font-size: 16px; cursor: pointer;
