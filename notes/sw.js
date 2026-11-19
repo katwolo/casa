@@ -1,5 +1,5 @@
 // Red primero, caché como respaldo: la app funciona sin conexión.
-const CACHE = 'notes-v7';
+const CACHE = 'notes-v8';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'db.js', 'sync.js', 'ocr.js', 'camera.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

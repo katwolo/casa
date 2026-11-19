@@ -13,6 +13,7 @@ const esc = (s = '') =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const ICONS = {
+  home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-6h4v6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   note: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4"/>',
@@ -459,7 +460,8 @@ const sorted = (list) => [...list].sort((a, b) => b.updatedAt - a.updatedAt);
 function renderHome() {
   const recent = sorted(items).slice(0, 4);
   app.innerHTML = `
-    <header class="top"><div class="avatar" aria-hidden="true">N</div></header>
+    <header class="top"><div class="avatar" aria-hidden="true">N</div>
+      <a class="icon-btn" href="../" aria-label="Volver a Casa" title="Volver a Casa">${icon('home')}</a></header>
     <section class="hero"><h1>Notes</h1><p class="date">${fmtLong(new Date())}</p></section>
     <form class="search" id="home-search" role="search">
       <input type="search" name="q" placeholder="Busca notas, tareas o documentos" aria-label="Buscar">
